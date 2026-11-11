@@ -152,7 +152,9 @@ function fetchItem(id) {
   return p;
 }
 
+const COIN = 'SKYBLOCK_COIN';
 function nameStr(id) {
+  if (id === COIN) return '§6Coins';
   const i = info.get(id);
   if (i && i.name) return i.name;
   const l = listById.get(id);
@@ -227,6 +229,12 @@ function compute(p) {
     if (r.type === 'kat') kat += r.duration * crafts;
     const next = path.concat(id);
     for (const inp of r.inputs) n.children.push(walk(inp.id, inp.count * crafts, next));
+    if (r.coins) {
+      // Coins show up as their own ingredient, so they appear in the tree and the raw materials list.
+      const q = r.coins * crafts;
+      n.children.push({ id: COIN, qty: q, key: n.key + '>' + COIN, depth: n.depth + 1, children: [], raw: true, coin: true });
+      raw.set(COIN, (raw.get(COIN) || 0) + q);
+    }
     const s = steps.get(id);
     if (s && s.ri === ri) { s.crafts += crafts; s.out += crafts * r.count; }
     else if (!s) steps.set(id, { id, ri, recipe: r, crafts, out: crafts * r.count });
@@ -291,17 +299,20 @@ function render(res) {
   // stats
   let need = 0, got = 0, doneTypes = 0;
   for (const [id, q] of res.raw) {
+    if (id === COIN) continue; // coins are tracked in their own card
     const h = Math.min(p.have[id] || 0, q);
     need += q; got += h; if (h >= q) doneTypes++;
   }
   const pct = need ? got / need * 100 : 100;
+  const coinHave = Math.min(p.have[COIN] || 0, res.coins);
+  const itemTypes = res.raw.size - (res.raw.has(COIN) ? 1 : 0);
   const stepsDone = res.steps.filter(s => p.done[s.id]).length;
   const loading = res.missing.size > 0;
   $('#stats').innerHTML = [
     stat('Materials gathered', `${pct.toFixed(pct >= 99.95 || pct === 0 ? 0 : 1)}%`, pct),
-    stat('Raw materials done', `${doneTypes} / ${res.raw.size}`),
+    stat('Raw materials done', `${doneTypes} / ${itemTypes}`),
     stat('Crafts done', `${stepsDone} / ${res.steps.length}`, res.steps.length ? stepsDone / res.steps.length * 100 : 100),
-    stat('Coins (NPC & upgrades)', coins(res.coins)),
+    res.coins ? stat('Coins saved', `${coins(coinHave)} / ${coins(res.coins)}`, coinHave / res.coins * 100) : stat('Coins needed', '0'),
     res.forge ? stat('Forge time', dur(res.forge)) : '',
     res.kat ? stat('Kat upgrade time', dur(res.kat)) : '',
   ].join('') + (loading ? '' : '');
@@ -335,7 +346,7 @@ function renderRaw(p, res) {
   const rows = [...res.raw].map(([id, q]) => {
     const h = p.have[id] || 0;
     return { id, q, h, left: Math.max(0, q - h), name: plainName(id) };
-  }).sort((a, b) => (a.left === 0) - (b.left === 0) || a.name.localeCompare(b.name));
+  }).sort((a, b) => (a.id === COIN ? -1 : b.id === COIN ? 1 : 0) || (a.left === 0) - (b.left === 0) || a.name.localeCompare(b.name));
   const shown = state.hideDone ? rows.filter(r => r.left > 0) : rows;
   const body = shown.map(r => {
     const inf = info.get(r.id);
@@ -374,7 +385,7 @@ function nodeHTML(p, n) {
   const open = kids && isOpen(n);
   const chips = [];
   if (n.loading) chips.push('<span class="chip">loading…</span>');
-  if (n.raw) chips.push(`<span class="chip raw">${n.cyc ? 'raw (loop)' : 'gather'}</span>`);
+  if (n.raw) chips.push(`<span class="chip raw">${n.coin ? 'save up' : n.cyc ? 'raw (loop)' : 'gather'}</span>`);
   if (n.recipe) {
     const [label, cls] = RTYPE[n.recipe.type];
     let t = `${label} ×${num(n.crafts)}`;
@@ -419,7 +430,7 @@ const iconFile = id => id.replace(/[^A-Za-z0-9_]/g, c => '-' + c.charCodeAt(0) +
 let localIcons = null;
 fetch('../icons/index.json').then(r => r.ok ? r.json() : []).catch(() => [])
   .then(list => { localIcons = new Set(list); if (state.tab === 'tree' && last) render(last); });
-const ICON = id => (!localIcons || localIcons.has(iconFile(id)))
+const ICON = id => (id = id === COIN ? 'GOLD_NUGGET' : id, !localIcons || localIcons.has(iconFile(id)))
   ? '../icons/' + iconFile(id)
   : 'https://sky.coflnet.com/static/icon/' + encodeURIComponent(id);
 /** Broken icon: try coflnet once, then show the item's first letter. */
@@ -427,7 +438,7 @@ window.iconFail = img => {
   const wrap = img.parentElement;
   if (!img.dataset.tried) {
     img.dataset.tried = '1';
-    const url = 'https://sky.coflnet.com/static/icon/' + encodeURIComponent(img.dataset.id);
+    const url = 'https://sky.coflnet.com/static/icon/' + encodeURIComponent(img.dataset.id === COIN ? 'GOLD_NUGGET' : img.dataset.id);
     wrap.style.setProperty('--icon', `url('${url}')`);
     img.src = url;
     return;
@@ -448,7 +459,7 @@ function picHTML(p, n) {
   const open = kids && isOpen(n);
   const done = n.raw ? (p.have[n.id] || 0) >= (last && last.raw.get(n.id) || Infinity) : n.used >= n.qty;
   const cls = ['vt-box', n.raw ? 'raw' : '', done ? 'done' : '', kids && !open ? 'closed' : '', n.key === selectedKey ? 'sel' : ''].join(' ');
-  const tip = `${num(n.qty)}× ${plainName(n.id)}${n.recipe ? ' · ' + recipeLabel(n.recipe) : n.raw ? ' · gather' : ''}`;
+  const tip = `${num(n.qty)}× ${plainName(n.id)}${n.recipe ? ' · ' + recipeLabel(n.recipe) : n.coin ? ' · save up' : n.raw ? ' · gather' : ''}`;
   return `<div class="vt-node">
     <button class="${cls}" data-select="${esc(n.key)}" title="${esc(tip)}">
       <span class="vt-icon ${hasGlint(n.id) ? 'glint' : ''}" style="--icon:url('${ICON(n.id)}')"><img src="${ICON(n.id)}" alt="" loading="lazy" data-id="${esc(n.id)}" data-letter="${esc(plainName(n.id).charAt(0))}" onerror="iconFail(this)"></span>
@@ -466,7 +477,7 @@ function selectedPanel(p, res) {
     const [label, cls] = RTYPE[n.recipe.type];
     bits.push(`<span class="chip ${cls}">${esc(label)} ×${num(n.crafts)}${n.recipe.duration ? ` · ${dur(n.recipe.duration)} each` : ''}</span>`);
   }
-  if (n.raw) bits.push(`<span class="chip raw">gather</span>`);
+  if (n.raw) bits.push(`<span class="chip raw">${n.coin ? 'save up' : 'gather'}</span>`);
   if (inf) for (const r of inf.req) bits.push(`<span class="chip req">🔒 ${esc(r)}</span>`);
   if (n.used) bits.push(`<span class="covered">✓ ${num(n.used)} from inventory</span>`);
   const actions = [];
@@ -502,10 +513,15 @@ function renderTreeHTML(p, res, pic) {
       </span>
       <button class="btn ghost small" data-act="openall">Expand all</button>
       <button class="btn ghost small" data-act="closeall">Collapse all</button>
-      <span>${pic ? 'Hover or click an item for details.' : 'Enter items you already own and their branches disappear. Use "Stop here" for anything you\'d rather treat as one raw item.'}</span>
+      ${pic ? `<span class="seg">
+        <button class="btn ghost small" data-zoom="-1" title="Zoom out">−</button>
+        <button class="btn ghost small" data-zoom="0" title="Reset zoom" id="zoomLabel">${Math.round(treeZoom * 100)}%</button>
+        <button class="btn ghost small" data-zoom="1" title="Zoom in">+</button>
+      </span>` : ''}
+      <span>${pic ? 'Scroll to zoom, drag to move, click an item for details.' : 'Enter items you already own and their branches disappear. Use "Stop here" for anything you\'d rather treat as one raw item.'}</span>
     </div>
     ${pic
-      ? `<div class="vt-frame"><div class="vt-canvas">${picHTML(p, res.root)}</div></div>${selectedPanel(p, res)}`
+      ? `<div class="vt-frame"><div class="vt-canvas" style="zoom:${treeZoom}">${picHTML(p, res.root)}</div></div>${selectedPanel(p, res)}`
       : `<ul class="tree">${nodeHTML(p, res.root)}</ul>`}`;
 }
 
@@ -702,6 +718,39 @@ function findNode(n, key) {
   for (const c of n.children) { const f = findNode(c, key); if (f) return f; }
   return null;
 }
+
+/* ---------- zoom the picture tree (mouse wheel or +/- buttons) ---------- */
+let treeZoom = Math.min(2.5, Math.max(0.3, +state.treeZoom || 1));
+function setZoom(z, frame, cx, cy) {
+  z = Math.min(2.5, Math.max(0.3, Math.round(z * 100) / 100));
+  const canvas = frame && frame.querySelector('.vt-canvas');
+  if (!canvas || z === treeZoom) return;
+  // Keep the point under the cursor (or the frame's centre) in place while zooming.
+  const r = frame.getBoundingClientRect();
+  const px = cx === undefined ? frame.clientWidth / 2 : cx - r.left;
+  const py = cy === undefined ? frame.clientHeight / 2 : cy - r.top;
+  const ux = (frame.scrollLeft + px) / treeZoom, uy = (frame.scrollTop + py) / treeZoom;
+  treeZoom = z;
+  canvas.style.zoom = z;
+  frame.scrollLeft = ux * z - px;
+  frame.scrollTop = uy * z - py;
+  const label = document.getElementById('zoomLabel');
+  if (label) label.textContent = Math.round(z * 100) + '%';
+  state.treeZoom = z; saveState();
+}
+document.addEventListener('wheel', e => {
+  const frame = e.target.closest && e.target.closest('.vt-frame');
+  if (!frame) return;
+  e.preventDefault();
+  setZoom(treeZoom * Math.exp(-e.deltaY * 0.0015), frame, e.clientX, e.clientY);
+}, { passive: false });
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-zoom]');
+  if (!b) return;
+  const frame = $('#tab-tree .vt-frame');
+  const d = +b.dataset.zoom;
+  setZoom(d === 0 ? 1 : treeZoom * (d > 0 ? 1.25 : 0.8), frame);
+});
 
 /* ---------- drag to pan the picture tree ---------- */
 (function dragPan() {
