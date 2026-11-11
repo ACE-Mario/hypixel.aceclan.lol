@@ -11,6 +11,9 @@ ACE Clan's Hypixel SkyBlock tools. This is a separate site from the main clan si
 - `events/`: Event Timers. Countdowns worked out from the SkyBlock calendar.
 - `mayor/`: Mayor Tracker. Current mayor, minister and election votes from the public Hypixel API.
 - `shared/`: the shared stylesheet (`site.css`) and helpers (`sb.js`: SkyBlock calendar, formatting).
+- `icons/`: item icons for the Ironman planner's picture tree, plus `index.json` listing them.
+  Fetched from sky.coflnet.com with `python scripts/fetch_icons.py NotEnoughUpdates-REPO-master.zip`
+  (existing icons are skipped, so re-running only grabs new items).
 - `data/`: `minions.json` and `forge.json`, extracted from the NEU item repo. Re-extract them when new
   minions or forge recipes are added: download the NEU repo zip, then run
   `python scripts/extract_neu.py NotEnoughUpdates-REPO-master.zip data`.
