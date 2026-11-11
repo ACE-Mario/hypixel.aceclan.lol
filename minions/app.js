@@ -12,6 +12,13 @@ const FUELS = [
 // Average items per harvest for minions whose main drop isn't 1 (editable per row anyway).
 const DEFAULT_DROPS = { LAPIS: 6, REDSTONE: 4.5 };
 
+// Every minion is assumed to have a compactor, which turns drops into their enchanted form
+// (usually 160 of the base item each), so each storage slot effectively holds 160× more.
+const COMPACT_RATIO = 160;
+// Minions whose drops only the Dwarven Super Compactor can compact.
+const DWARVEN = new Set(['MITHRIL']);
+const compactorFor = id => DWARVEN.has(id) ? 'Dwarven Super Compactor' : 'Super Compactor 3000';
+
 let minions = [], byId = new Map(), names = {};
 let st = U.readLS(KEY, null) || { fuel: 0, bonus: 0, rows: [] };
 const save = () => U.writeLS(KEY, st);
@@ -28,7 +35,7 @@ function stats(row) {
   const action = t.t / (1 + totalBonus() / 100);         // seconds between actions
   const harvestsPerDay = 86400 / (action * 2);            // one action places, the next harvests
   const perDay = harvestsPerDay * row.drops;
-  const fill = t.s && perDay ? t.s / perDay * 86400 : null; // seconds until storage is full
+  const fill = t.s && perDay ? t.s * COMPACT_RATIO / perDay * 86400 : null; // seconds until storage is full
   return { m, t, action, perDay, fill };
 }
 
@@ -40,27 +47,28 @@ function renderList() {
   }
   $('#list').innerHTML = `<div class="table-wrap"><table class="table">
     <thead><tr><th>Minion</th><th>Tier</th><th class="num">Count</th><th class="num">Drops / harvest</th>
-      <th class="num">Action</th><th class="num">Per day (all)</th><th class="num">Storage full</th><th></th></tr></thead>
+      <th class="num">Action</th><th class="num">Per day (all)</th><th class="num">Fills up in</th><th></th></tr></thead>
     <tbody>${st.rows.map((row, i) => {
       const s = stats(row);
       return `<tr>
-        <td><b>${U.esc(s.m.name)}</b></td>
+        <td><b>${U.esc(s.m.name)}</b><div class="ing">${compactorFor(s.m.id)}</div></td>
         <td><select data-tier="${i}">${s.m.tiers.map(t => `<option value="${t.tier}" ${t.tier === s.t.tier ? 'selected' : ''}>${U.roman(t.tier)}</option>`).join('')}</select></td>
         <td class="num"><input class="small" type="number" min="1" max="31" value="${row.count}" data-count="${i}" aria-label="Count"></td>
         <td class="num"><input class="small" type="number" min="0" step="0.1" value="${row.drops}" data-drops="${i}" aria-label="Drops per harvest"></td>
         <td class="num nowrap">${s.action.toFixed(1)}s</td>
-        <td class="num nowrap"><b>${U.num(s.perDay * row.count)}</b></td>
-        <td class="num nowrap" title="Max storage ${U.num(s.t.s)} items per minion">${s.fill ? U.dur(s.fill) : '—'}</td>
+        <td class="num nowrap"><b>${Math.round(s.perDay * row.count).toLocaleString()}</b></td>
+        <td class="num nowrap" title="${U.num(s.t.s)} storage, compacted ×${COMPACT_RATIO}">${s.fill ? U.dur(s.fill) : '—'}</td>
         <td class="right"><button class="btn ghost icon danger" data-del="${i}" title="Remove">✕</button></td>
       </tr>`;
     }).join('')}</tbody></table></div>
     <p class="hint">"Drops / harvest" is the average number of the main item one harvest gives, usually 1. Change it for minions that drop more.
-      "Storage full" assumes no storage upgrades or compactors.</p>`;
+      "Fills up in" assumes each minion has a compactor (shown under its name) turning drops into enchanted items at 160:1,
+      with no extra storage upgrades. "Per day" counts the base item before compacting.</p>`;
   const totalMinions = st.rows.reduce((n, r) => n + r.count, 0);
   $('#totals').innerHTML = `<div class="stats">
     <div class="stat"><div class="k">Minions placed</div><div class="v">${totalMinions}</div></div>
     <div class="stat"><div class="k">Total speed bonus</div><div class="v">+${U.num(totalBonus())}%</div></div>
-    <div class="stat"><div class="k">First storage full</div><div class="v">${(() => {
+    <div class="stat"><div class="k">First minion full in</div><div class="v">${(() => {
       const f = st.rows.map(r => stats(r).fill).filter(Boolean);
       return f.length ? U.dur(Math.min(...f)) : '—';
     })()}</div></div>
