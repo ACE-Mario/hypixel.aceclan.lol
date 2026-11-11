@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ironman Craft Planner · ACE Hypixel</title>
+  <meta name="description" content="Plan any Hypixel SkyBlock item for an Ironman profile: full recipe breakdown, raw material checklist, forge times and collection requirements.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="sitebar">
+    <div class="wrap sitebar-inner">
+      <a class="ace" href="https://aceclan.lol/">ACE<span>.</span> <small>Hypixel</small></a>
+      <nav>
+        <a href="../">All tools</a>
+        <a href="https://aceclan.lol/">Clan site</a>
+      </nav>
+    </div>
+  </div>
+  <header class="top">
+    <div class="wrap top-inner">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">⛏</span>
+        <div>
+          <h1>Ironman Craft Planner</h1>
+          <p class="tag">Break any SkyBlock item down to what you have to farm yourself.</p>
+        </div>
+      </div>
+      <div class="plans">
+        <label for="planSelect" class="sr">Plan</label>
+        <select id="planSelect"></select>
+        <button id="newPlan" class="btn ghost" title="Start a new empty plan">New</button>
+        <button id="renamePlan" class="btn ghost" title="Rename this plan">Rename</button>
+        <button id="deletePlan" class="btn ghost danger" title="Delete this plan">Delete</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="search-card">
+      <div class="search-row">
+        <div class="search-box">
+          <input id="search" type="search" autocomplete="off" spellcheck="false"
+                 placeholder="Search an item… e.g. Hyperion, Terminator, Juju Shortbow">
+          <div id="suggest" class="suggest" role="listbox" hidden></div>
+        </div>
+        <label class="qty">Amount
+          <input id="qty" type="number" min="1" value="1">
+        </label>
+      </div>
+      <p id="status" class="status" aria-live="polite"></p>
+    </section>
+
+    <section id="empty" class="empty">
+      <h2>What are you working towards?</h2>
+      <p>Search for an item above. The planner pulls its recipe, then the recipes of every ingredient,
+         until it reaches things you have to gather yourself, like drops, ores, crops and fragments.
+         On Ironman that list <em>is</em> the grind.</p>
+      <ul class="how">
+        <li><b>Raw materials:</b> a checklist of everything to farm. Enter how many you have and watch it fill.</li>
+        <li><b>Recipe tree:</b> every craft, forge and NPC purchase in the chain. Already own an intermediate? Enter it and its branch disappears.</li>
+        <li><b>Requirements:</b> the collections, slayers and HotM tiers you need to unlock along the way.</li>
+        <li><b>Steps:</b> the crafts in order, so you can tick them off.</li>
+      </ul>
+      <p class="muted">Your plans are saved in this browser.</p>
+    </section>
+
+    <section id="planView" hidden>
+      <div class="target">
+        <div>
+          <div class="target-label">Target</div>
+          <h2 id="targetName"></h2>
+          <div id="targetReq" class="chips"></div>
+        </div>
+        <div class="target-actions">
+          <a id="targetWiki" class="btn ghost" target="_blank" rel="noopener">Wiki ↗</a>
+          <button id="resetHave" class="btn ghost">Clear inventory</button>
+          <button id="exportPlan" class="btn ghost">Export</button>
+          <button id="importPlan" class="btn ghost">Import</button>
+        </div>
+      </div>
+
+      <div id="stats" class="stats"></div>
+
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="raw" class="tab">Raw materials</button>
+        <button role="tab" data-tab="tree" class="tab">Recipe tree</button>
+        <button role="tab" data-tab="req" class="tab">Requirements</button>
+        <button role="tab" data-tab="steps" class="tab">Steps</button>
+      </nav>
+
+      <div id="tab-raw" class="panel"></div>
+      <div id="tab-tree" class="panel"></div>
+      <div id="tab-req" class="panel"></div>
+      <div id="tab-steps" class="panel"></div>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    Part of <a href="https://aceclan.lol/">ACE Clan</a> · Recipes from the <a href="https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO" target="_blank" rel="noopener">NotEnoughUpdates item repo</a>,
+    item list from the public Hypixel API. Not affiliated with Hypixel or Mojang.
+  </footer>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>

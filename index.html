@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ACE Hypixel</title>
+<meta name="description" content="ACE Clan's Hypixel SkyBlock tools.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background:
+      radial-gradient(ellipse at 50% 120%, rgba(124, 58, 237, 0.12), transparent 60%),
+      #0d0f14;
+    background-attachment: fixed;
+    color: #e8e8e8;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  h1, h2, h3, .ace, .nav a, .btn { font-family: 'Rajdhani', 'Segoe UI', Arial, sans-serif; }
+  a { color: #a78bfa; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 16px; }
+
+  header { position: relative; overflow: hidden; isolation: isolate; padding: 0 0 70px; }
+  header::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, #ff4655, #7c3aed, #c89b3c, transparent);
+  }
+  .glow {
+    position: absolute; inset: -30%; z-index: -1; filter: blur(20px);
+    background:
+      radial-gradient(circle at 25% 40%, rgba(85, 255, 85, 0.13), transparent 35%),
+      radial-gradient(circle at 75% 35%, rgba(255, 170, 0, 0.16), transparent 35%),
+      radial-gradient(circle at 50% 75%, rgba(124, 58, 237, 0.4), transparent 45%);
+    animation: drift 18s ease-in-out infinite alternate;
+  }
+  @keyframes drift { from { transform: translate(-3%, -2%) rotate(0); } to { transform: translate(3%, 2%) rotate(8deg) scale(1.06); } }
+  @media (prefers-reduced-motion: reduce) { .glow { animation: none; } }
+
+  .nav { display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; gap: 12px; }
+  .ace { font-weight: 700; font-size: 1.4rem; letter-spacing: 3px; color: #e8e8e8; text-decoration: none; }
+  .ace span { color: #a78bfa; }
+  .ace small { font-size: .8rem; letter-spacing: 2px; color: #9ca3af; margin-left: 4px; }
+  .nav nav { display: flex; gap: 20px; }
+  .nav nav a { color: #9ca3af; text-decoration: none; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; font-size: .95rem; }
+  .nav nav a:hover { color: #e8e8e8; }
+
+  .intro { text-align: center; padding-top: 60px; }
+  .kicker {
+    display: inline-flex; gap: 10px; align-items: center; padding: 6px 16px; border-radius: 999px;
+    border: 1px solid rgba(85, 255, 85, 0.3); background: rgba(13, 15, 20, 0.5); color: #9ff09f;
+    font-size: .85rem; letter-spacing: 2px; text-transform: uppercase;
+  }
+  .kicker .dot { width: 8px; height: 8px; border-radius: 50%; background: #55ff55; box-shadow: 0 0 10px #55ff55; }
+  h1 { font-size: clamp(2.6rem, 9vw, 5rem); line-height: 1; margin: 18px 0 10px; letter-spacing: 4px; }
+  h1 em { font-style: normal; color: #ffaa00; }
+  .intro p { color: #9ca3af; max-width: 560px; margin: 0 auto; }
+
+  main { padding: 50px 16px 60px; }
+  .section-title { font-size: 1.6rem; letter-spacing: 3px; margin-bottom: 18px; }
+  .tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .tool {
+    display: flex; flex-direction: column; gap: 10px; padding: 22px; border-radius: 14px; text-decoration: none; color: inherit;
+    background: rgba(24, 28, 37, 0.85); border: 1px solid #2b3040; transition: transform .15s, border-color .15s;
+  }
+  a.tool:hover { transform: translateY(-3px); border-color: #a78bfa; }
+  .tool .icon { font-size: 30px; width: 54px; height: 54px; display: grid; place-items: center; border-radius: 12px; background: #20242f; border: 1px solid #2b3040; }
+  .tool h3 { font-size: 1.35rem; letter-spacing: 1px; }
+  .tool p { color: #9ca3af; font-size: .95rem; flex: 1; }
+  .tool .go { color: #a78bfa; font-weight: 600; font-size: .9rem; }
+  .tool.soon { border-style: dashed; opacity: .7; }
+  .tool.soon .go { color: #9ca3af; }
+
+  footer { color: #9ca3af; font-size: .8rem; text-align: center; padding: 24px 16px 40px; border-top: 1px solid #2b3040; }
+</style>
+</head>
+<body>
+<header>
+  <div class="glow"></div>
+  <div class="nav">
+    <a class="ace" href="https://aceclan.lol/">ACE<span>.</span> <small>HYPIXEL</small></a>
+    <nav>
+      <a href="https://aceclan.lol/">Clan site</a>
+    </nav>
+  </div>
+  <div class="intro wrap">
+    <div class="kicker"><span class="dot"></span>SkyBlock tools</div>
+    <h1>ACE <em>HYPIXEL</em></h1>
+    <p>Free tools for SkyBlock, built for Ironman players. Everything runs in your browser, with no login or API key.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <h2 class="section-title">TOOLS</h2>
+  <div class="tools">
+    <a class="tool" href="ironman/">
+      <div class="icon" aria-hidden="true">⛏</div>
+      <h3>Ironman Craft Planner</h3>
+      <p>Pick any item and see it broken down to the raw materials you have to farm. Track your progress, forge times and the collections you need to unlock.</p>
+      <span class="go">Open planner →</span>
+    </a>
+    <div class="tool soon">
+      <div class="icon" aria-hidden="true">✚</div>
+      <h3>More coming</h3>
+      <p>More SkyBlock tools will be added here.</p>
+      <span class="go">Soon</span>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Part of <a href="https://aceclan.lol/">ACE Clan</a>. Not affiliated with Hypixel or Mojang.
+</footer>
+</body>
+</html>
