@@ -361,7 +361,7 @@ function renderRaw(p, res) {
 }
 
 const openState = new Map(); // key -> bool (user toggled)
-function isOpen(n) { return openState.has(n.key) ? openState.get(n.key) : n.depth < 2; }
+function isOpen(n) { return openState.has(n.key) ? openState.get(n.key) : n.depth < (state.treeView === 'list' ? 2 : 8); }
 const RTYPE = { craft: ['Craft', ''], forge: ['Forge', 'forge'], npc: ['NPC shop', 'npc'], kat: ['Kat upgrade', 'kat'], trade: ['Trade', 'npc'] };
 function recipeLabel(r) {
   const ins = r.inputs.map(i => `${num(i.count)} ${plainName(i.id)}`);
@@ -411,14 +411,78 @@ function nodeHTML(p, n) {
     ${open ? `<ul>${n.children.map(c => nodeHTML(p, c)).join('')}</ul>` : ''}
   </li>`;
 }
+/* ---- picture view of the tree ---- */
+const ICON = id => 'https://sky.coflnet.com/static/icon/' + encodeURIComponent(id);
+let selectedKey = null;
+function shortNum(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M';
+  if (n >= 1e4) return (n / 1e3).toFixed(n >= 1e5 ? 0 : 1).replace(/\.0$/, '') + 'k';
+  return String(Math.round(n * 100) / 100);
+}
+function picHTML(p, n) {
+  const kids = n.children.length > 0;
+  const open = kids && isOpen(n);
+  const done = n.raw ? (p.have[n.id] || 0) >= (last && last.raw.get(n.id) || Infinity) : n.used >= n.qty;
+  const cls = ['vt-box', n.raw ? 'raw' : '', done ? 'done' : '', kids && !open ? 'closed' : '', n.key === selectedKey ? 'sel' : ''].join(' ');
+  const tip = `${num(n.qty)}× ${plainName(n.id)}${n.recipe ? ' · ' + recipeLabel(n.recipe) : n.raw ? ' · gather' : ''}`;
+  return `<div class="vt-node">
+    <button class="${cls}" data-select="${esc(n.key)}" title="${esc(tip)}">
+      <img src="${ICON(n.id)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'vt-letter',textContent:${esc(JSON.stringify(plainName(n.id).charAt(0)))}}))">
+      <span class="vt-n">${shortNum(n.qty)}</span>
+    </button>
+    ${open ? `<div class="vt-kids">${n.children.map(c => picHTML(p, c)).join('')}</div>` : ''}
+  </div>`;
+}
+function selectedPanel(p, res) {
+  const n = selectedKey && findNode(res.root, selectedKey);
+  if (!n) return '<p class="hint">Click an item to see its details. Items with a small corner mark have hidden ingredients.</p>';
+  const inf = info.get(n.id);
+  const bits = [];
+  if (n.recipe) {
+    const [label, cls] = RTYPE[n.recipe.type];
+    bits.push(`<span class="chip ${cls}">${esc(label)} ×${num(n.crafts)}${n.recipe.duration ? ` · ${dur(n.recipe.duration)} each` : ''}</span>`);
+  }
+  if (n.raw) bits.push(`<span class="chip raw">gather</span>`);
+  if (inf) for (const r of inf.req) bits.push(`<span class="chip req">🔒 ${esc(r)}</span>`);
+  if (n.used) bits.push(`<span class="covered">✓ ${num(n.used)} from inventory</span>`);
+  const actions = [];
+  if (n.children.length) actions.push(`<button class="btn ghost small" data-toggle="${esc(n.key)}">${isOpen(n) ? 'Hide ingredients' : 'Show ingredients'}</button>`);
+  if (n.hasRecipe && !n.cyc && n.depth > 0) {
+    actions.push(n.raw
+      ? `<button class="btn ghost small" data-act="expand" data-id="${esc(n.id)}">Break down</button>`
+      : `<button class="btn ghost small" data-act="stop" data-id="${esc(n.id)}">Stop here</button>`);
+  }
+  if (n.depth > 0) actions.push(`<label class="node-ctrl" style="margin:0">have <input type="number" min="0" value="${p.have[n.id] || ''}" placeholder="0" data-have="${esc(n.id)}" data-focus="pic:${esc(n.key)}"></label>`);
+  actions.push(wikiLink(n.id));
+  return `<div class="vt-detail">
+    <div class="vt-detail-head"><b>${num(n.qty)}×</b> ${nameHTML(n.id)} ${bits.join(' ')}</div>
+    ${n.recipe ? `<div class="ing">${esc(recipeLabel(n.recipe))}</div>` : ''}
+    <div class="vt-actions">${actions.join(' ')}</div>
+  </div>`;
+}
+
 function renderTree(p, res) {
+  const pic = state.treeView !== 'list';
+  const oldFrame = $('#tab-tree .vt-frame');
+  const scroll = oldFrame ? [oldFrame.scrollLeft, oldFrame.scrollTop] : null;
+  renderTreeHTML(p, res, pic);
+  const frame = $('#tab-tree .vt-frame');
+  if (frame && scroll) [frame.scrollLeft, frame.scrollTop] = scroll;
+}
+function renderTreeHTML(p, res, pic) {
   $('#tab-tree').innerHTML = `
     <div class="toolbar">
+      <span class="seg">
+        <button class="btn small ${pic ? '' : 'ghost'}" data-view="pic">Picture</button>
+        <button class="btn small ${pic ? 'ghost' : ''}" data-view="list">List</button>
+      </span>
       <button class="btn ghost small" data-act="openall">Expand all</button>
       <button class="btn ghost small" data-act="closeall">Collapse all</button>
-      <span>Enter items you already own and their branches disappear. Use "Stop here" for anything you'd rather treat as one raw item.</span>
+      <span>${pic ? 'Hover or click an item for details.' : 'Enter items you already own and their branches disappear. Use "Stop here" for anything you\'d rather treat as one raw item.'}</span>
     </div>
-    <ul class="tree">${nodeHTML(p, res.root)}</ul>`;
+    ${pic
+      ? `<div class="vt-frame"><div class="vt-canvas">${picHTML(p, res.root)}</div></div>${selectedPanel(p, res)}`
+      : `<ul class="tree">${nodeHTML(p, res.root)}</ul>`}`;
 }
 
 function renderReq(p, res) {
@@ -588,6 +652,10 @@ function bind() {
   });
   view.addEventListener('click', e => {
     const p = plan(); if (!p) return;
+    const vw = e.target.closest('[data-view]');
+    if (vw) { state.treeView = vw.dataset.view; saveState(); render(last); return; }
+    const sel = e.target.closest('[data-select]');
+    if (sel) { selectedKey = selectedKey === sel.dataset.select ? null : sel.dataset.select; render(last); return; }
     const tg = e.target.closest('[data-toggle]');
     if (tg) {
       const n = findNode(last.root, tg.dataset.toggle);
