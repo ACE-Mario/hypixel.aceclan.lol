@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mayor Tracker · ACE Hypixel</title>
+  <meta name="description" content="The current Hypixel SkyBlock mayor, minister and perks, plus live election votes.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/site.css">
+</head>
+<body>
+  <div class="sitebar">
+    <div class="wrap sitebar-inner">
+      <a class="ace" href="../">ACE<span>.</span> <small>Hypixel</small></a>
+      <nav><a href="../">All tools</a></nav>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <h2>Mayor &amp; Election</h2>
+        <p>Who's in charge, what their perks do, and how the next election is going.</p>
+      </div>
+      <div class="clock">
+        <div class="k" id="termLabel">Term ends in</div>
+        <div class="v" id="termCd">…</div>
+        <div class="hint" id="termWhen"></div>
+      </div>
+    </div>
+
+    <div id="content"><p class="empty-note">Loading the latest election data…</p></div>
+    <p class="hint" id="updated"></p>
+  </main>
+
+  <footer class="wrap foot">Data from the public Hypixel API. Not affiliated with Hypixel or Mojang.</footer>
+  <script src="../shared/sb.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

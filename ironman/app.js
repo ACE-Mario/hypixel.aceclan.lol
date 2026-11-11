@@ -614,5 +614,26 @@ function findNode(n, key) {
 /* ---------- start ---------- */
 bind();
 if (state.plans.length && !plan()) state.active = state.plans[0].id;
+
+// Deep link from the other tools: ironman/?item=WHEAT_GENERATOR_5&qty=1
+(function openLinkedItem() {
+  const qp = new URLSearchParams(location.search);
+  const raw = qp.get('item');
+  if (!raw) return;
+  const id = raw.trim().toUpperCase();
+  const qty = Math.max(1, parseInt(qp.get('qty'), 10) || 1);
+  history.replaceState(null, '', location.pathname);
+  const existing = state.plans.find(p => p.target === id && p.qty === qty);
+  if (existing) { state.active = existing.id; }
+  else {
+    const p = makePlan(pretty(id));
+    p.target = id; p.qty = qty;
+    fetchItem(id).then(inf => {
+      if (inf.name) { p.name = inf.name.replace(/§./g, '').trim(); saveState(); renderPlans(); }
+    });
+  }
+  state.tab = 'raw';
+  saveState();
+})();
 refresh();
 loadItemList();

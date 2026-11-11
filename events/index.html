@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Event Timers · ACE Hypixel</title>
+  <meta name="description" content="Live countdowns for Hypixel SkyBlock events: Dark Auction, Jacob's Contests, Spooky Festival, Traveling Zoo and more.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/site.css">
+</head>
+<body>
+  <div class="sitebar">
+    <div class="wrap sitebar-inner">
+      <a class="ace" href="../">ACE<span>.</span> <small>Hypixel</small></a>
+      <nav><a href="../">All tools</a></nav>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <h2>Event Timers</h2>
+        <p>Countdowns to every recurring SkyBlock event, worked out from the SkyBlock calendar.</p>
+      </div>
+      <div class="clock">
+        <div class="k">SkyBlock time</div>
+        <div class="v" id="sbNow">…</div>
+        <div class="hint" id="sbYear"></div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <label><input type="checkbox" id="hideHourly"> Hide hourly events</label>
+      <span>Times are shown in your local time zone.</span>
+    </div>
+    <div id="events" class="events"></div>
+    <p class="hint">Mayor-specific events (like Fishing Festival or Mining Fiesta) aren't listed here. See the <a href="../mayor/">Mayor tracker</a>.</p>
+  </main>
+
+  <footer class="wrap foot">Not affiliated with Hypixel or Mojang.</footer>
+  <script src="../shared/sb.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

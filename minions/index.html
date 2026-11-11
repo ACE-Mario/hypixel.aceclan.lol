@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Minion Planner · ACE Hypixel</title>
+  <meta name="description" content="Plan your Hypixel SkyBlock minions: output per day, when storage fills, and what each upgrade costs.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/site.css">
+</head>
+<body>
+  <div class="sitebar">
+    <div class="wrap sitebar-inner">
+      <a class="ace" href="../">ACE<span>.</span> <small>Hypixel</small></a>
+      <nav><a href="../">All tools</a></nav>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <h2>Minion Planner</h2>
+        <p>Add your minions to see output per day, when storage fills up, and what the next tiers cost.</p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <label class="field">Fuel
+        <select id="fuel"></select>
+      </label>
+      <label class="field">Other speed bonus %
+        <input id="bonus" type="number" min="0" max="500" step="1" value="0" style="width:120px">
+      </label>
+      <div class="grow hint" style="margin:0">
+        Upgrades and other boosts add to this, e.g. Flycatcher +20%, Minion Expander +5%, a crystal +10%, Beacon up to +11%.
+        Speed bonuses add together and divide the time between actions.
+      </div>
+    </div>
+
+    <h3 class="section-h">Add a minion</h3>
+    <div class="search-box">
+      <input id="search" type="search" autocomplete="off" placeholder="Search minions… e.g. Snow, Clay, Enderman">
+    </div>
+    <div id="results" class="pick-list" hidden></div>
+
+    <h3 class="section-h">Your minions</h3>
+    <div id="list"></div>
+    <div id="totals"></div>
+
+    <h3 class="section-h">Upgrade cost</h3>
+    <div id="upgrades"></div>
+  </main>
+
+  <footer class="wrap foot">Minion stats and recipes from the <a href="https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO" target="_blank" rel="noopener">NotEnoughUpdates item repo</a>. Not affiliated with Hypixel or Mojang.</footer>
+  <script src="../shared/sb.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

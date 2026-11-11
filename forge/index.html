@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge Queue Planner · ACE Hypixel</title>
+  <meta name="description" content="Plan your Dwarven Forge slots: see when every forge will be ready and what materials the whole queue needs.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/site.css">
+</head>
+<body>
+  <div class="sitebar">
+    <div class="wrap sitebar-inner">
+      <a class="ace" href="../">ACE<span>.</span> <small>Hypixel</small></a>
+      <nav><a href="../">All tools</a></nav>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <h2>Forge Queue Planner</h2>
+        <p>Queue up forges and see which slot each one goes in and when it's ready.</p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <label class="field">Forge slots
+        <select id="slots"></select>
+      </label>
+      <label class="field">Quick Forge reduction %
+        <input id="quick" type="number" min="0" max="30" step="0.5" value="0" style="width:120px">
+      </label>
+      <label class="field">Start
+        <select id="startMode">
+          <option value="now">Now</option>
+          <option value="custom">Pick a time…</option>
+        </select>
+      </label>
+      <label class="field" id="startAtWrap" hidden>Start time
+        <input id="startAt" type="datetime-local">
+      </label>
+      <div class="grow"></div>
+      <button id="clear" class="btn ghost">Clear queue</button>
+    </div>
+    <p class="hint">Quick Forge is the Heart of the Mountain perk. It cuts every forge time by 10.5% at level 1, rising to 30% at max level.</p>
+
+    <h3 class="section-h">Add to queue</h3>
+    <div class="search-box">
+      <input id="search" type="search" autocomplete="off" placeholder="Search forge items… e.g. Refined Diamond, Mithril Plate, Gemstone Mixture">
+    </div>
+    <div id="results" class="pick-list" hidden></div>
+
+    <h3 class="section-h">Queue</h3>
+    <div id="queue"></div>
+
+    <h3 class="section-h">Timeline</h3>
+    <div id="timeline"></div>
+
+    <h3 class="section-h">Materials for the whole queue</h3>
+    <div id="mats"></div>
+  </main>
+
+  <footer class="wrap foot">Forge recipes from the <a href="https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO" target="_blank" rel="noopener">NotEnoughUpdates item repo</a>. Not affiliated with Hypixel or Mojang.</footer>
+  <script src="../shared/sb.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
