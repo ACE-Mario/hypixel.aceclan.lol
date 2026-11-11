@@ -9,6 +9,11 @@ const FUELS = [
   ['Enchanted Charcoal', 20], ['Enchanted Lava Bucket', 25], ['Magma Bucket', 30], ['Plasma Bucket', 35],
   ['Hamster Wheel', 50], ['Foul Flesh', 90],
 ];
+// Minion storage chests placed next to the minion: [name, extra slots of 64 items].
+const STORAGES = [
+  ['None', 0], ['Small Storage', 3], ['Medium Storage', 9], ['Large Storage', 15],
+  ['X-Large Storage', 21], ['XX-Large Storage', 27],
+];
 // Average items per harvest for minions whose main drop isn't 1 (editable per row anyway).
 const DEFAULT_DROPS = { LAPIS: 6, REDSTONE: 4.5 };
 
@@ -35,8 +40,9 @@ function stats(row) {
   const action = t.t / (1 + totalBonus() / 100);         // seconds between actions
   const harvestsPerDay = 86400 / (action * 2);            // one action places, the next harvests
   const perDay = harvestsPerDay * row.drops;
-  const fill = t.s && perDay ? t.s * COMPACT_RATIO / perDay * 86400 : null; // seconds until storage is full
-  return { m, t, action, perDay, fill };
+  const slots = t.s + (STORAGES[st.storage] ? STORAGES[st.storage][1] * 64 : 0); // items the minion can hold
+  const fill = slots && perDay ? slots * COMPACT_RATIO / perDay * 86400 : null; // seconds until storage is full
+  return { m, t, action, perDay, fill, slots };
 }
 
 function renderList() {
@@ -57,13 +63,13 @@ function renderList() {
         <td class="num"><input class="small" type="number" min="0" step="0.1" value="${row.drops}" data-drops="${i}" aria-label="Drops per harvest"></td>
         <td class="num nowrap">${s.action.toFixed(1)}s</td>
         <td class="num nowrap"><b>${Math.round(s.perDay * row.count).toLocaleString()}</b></td>
-        <td class="num nowrap" title="${U.num(s.t.s)} storage, compacted ×${COMPACT_RATIO}">${s.fill ? U.dur(s.fill) : '—'}</td>
+        <td class="num nowrap" title="${U.num(s.slots)} storage, compacted ×${COMPACT_RATIO}">${s.fill ? U.dur(s.fill) : '—'}</td>
         <td class="right"><button class="btn ghost icon danger" data-del="${i}" title="Remove">✕</button></td>
       </tr>`;
     }).join('')}</tbody></table></div>
     <p class="hint">"Drops / harvest" is the average number of the main item one harvest gives, usually 1. Change it for minions that drop more.
       "Fills up in" assumes each minion has a compactor (shown under its name) turning drops into enchanted items at 160:1,
-      with no extra storage upgrades. "Per day" counts the base item before compacting.</p>`;
+      plus the storage chosen above. "Per day" counts the base item before compacting.</p>`;
   const totalMinions = st.rows.reduce((n, r) => n + r.count, 0);
   $('#totals').innerHTML = `<div class="stats">
     <div class="stat"><div class="k">Minions placed</div><div class="v">${totalMinions}</div></div>
@@ -105,6 +111,7 @@ function renderUpgrades() {
 
 function render() {
   $('#fuel').value = st.fuel;
+  $('#storage').value = st.storage || 0;
   $('#bonus').value = st.bonus;
   renderList();
   renderUpgrades();
@@ -124,6 +131,8 @@ function search() {
 function bind() {
   $('#fuel').innerHTML = FUELS.map(([n, p], i) => `<option value="${i}">${n}${p ? ` (+${p}%)` : ''}</option>`).join('');
   $('#fuel').addEventListener('change', e => { st.fuel = +e.target.value; save(); render(); });
+  $('#storage').innerHTML = STORAGES.map(([n, s], i) => `<option value="${i}">${n}${s ? ` (+${s} slots)` : ''}</option>`).join('');
+  $('#storage').addEventListener('change', e => { st.storage = +e.target.value; save(); render(); });
   $('#bonus').addEventListener('change', e => { st.bonus = Math.max(0, +e.target.value || 0); save(); render(); });
   $('#search').addEventListener('input', search);
   $('#results').addEventListener('click', e => {
