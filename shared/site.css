@@ -263,3 +263,10 @@ input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accen
   .clock { text-align: left; }
   .table-wrap { overflow-x: auto; }
 }
+
+/* minion cards */
+.minion { display: grid; gap: 10px; }
+.minion-top, .minion-gear { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.minion-top h3 { margin: 0 auto 4px 0; font-size: 17px; min-width: 140px; }
+.minion-gear select { max-width: 220px; }
+.minion-stats { display: flex; flex-wrap: wrap; gap: 6px 22px; padding-top: 8px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
