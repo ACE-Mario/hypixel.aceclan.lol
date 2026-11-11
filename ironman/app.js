@@ -412,7 +412,20 @@ function nodeHTML(p, n) {
   </li>`;
 }
 /* ---- picture view of the tree ---- */
-const ICON = id => 'https://sky.coflnet.com/static/icon/' + encodeURIComponent(id);
+// Icons are stored in ../icons/ (see scripts/fetch_icons.py). Anything not downloaded yet
+// falls back to sky.coflnet.com, then to the item's first letter.
+const iconFile = id => id.replace(/[^A-Za-z0-9_]/g, c => '-' + c.charCodeAt(0) + '-') + '.png';
+let localIcons = null;
+fetch('../icons/index.json').then(r => r.ok ? r.json() : []).catch(() => [])
+  .then(list => { localIcons = new Set(list); if (state.tab === 'tree' && last) render(last); });
+const ICON = id => (!localIcons || localIcons.has(iconFile(id)))
+  ? '../icons/' + iconFile(id)
+  : 'https://sky.coflnet.com/static/icon/' + encodeURIComponent(id);
+/** Broken icon: try coflnet once, then show the item's first letter. */
+window.iconFail = img => {
+  if (!img.dataset.tried) { img.dataset.tried = '1'; img.src = 'https://sky.coflnet.com/static/icon/' + encodeURIComponent(img.dataset.id); return; }
+  img.replaceWith(Object.assign(document.createElement('span'), { className: 'vt-letter', textContent: img.dataset.letter }));
+};
 let selectedKey = null;
 function shortNum(n) {
   if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M';
@@ -427,7 +440,7 @@ function picHTML(p, n) {
   const tip = `${num(n.qty)}× ${plainName(n.id)}${n.recipe ? ' · ' + recipeLabel(n.recipe) : n.raw ? ' · gather' : ''}`;
   return `<div class="vt-node">
     <button class="${cls}" data-select="${esc(n.key)}" title="${esc(tip)}">
-      <img src="${ICON(n.id)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'vt-letter',textContent:${esc(JSON.stringify(plainName(n.id).charAt(0)))}}))">
+      <img src="${ICON(n.id)}" alt="" loading="lazy" data-id="${esc(n.id)}" data-letter="${esc(plainName(n.id).charAt(0))}" onerror="iconFail(this)">
       <span class="vt-n">${shortNum(n.qty)}</span>
     </button>
     ${open ? `<div class="vt-kids">${n.children.map(c => picHTML(p, c)).join('')}</div>` : ''}
@@ -678,6 +691,31 @@ function findNode(n, key) {
   for (const c of n.children) { const f = findNode(c, key); if (f) return f; }
   return null;
 }
+
+/* ---------- drag to pan the picture tree ---------- */
+(function dragPan() {
+  let drag = null;
+  document.addEventListener('pointerdown', e => {
+    const frame = e.target.closest('.vt-frame');
+    if (!frame || e.button !== 0 || e.target.closest('.vt-box')) return;
+    drag = { frame, x: e.clientX, y: e.clientY, left: frame.scrollLeft, top: frame.scrollTop, id: e.pointerId };
+    frame.classList.add('dragging');
+    frame.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  document.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    drag.frame.scrollLeft = drag.left - (e.clientX - drag.x);
+    drag.frame.scrollTop = drag.top - (e.clientY - drag.y);
+  });
+  const end = e => {
+    if (!drag || (e && e.pointerId !== drag.id)) return;
+    drag.frame.classList.remove('dragging');
+    drag = null;
+  };
+  document.addEventListener('pointerup', end);
+  document.addEventListener('pointercancel', end);
+})();
 
 /* ---------- start ---------- */
 bind();

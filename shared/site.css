@@ -278,6 +278,7 @@ input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accen
 .seg .btn:last-child { border-radius: 0 8px 8px 0; }
 .vt-frame {
   overflow: auto; max-height: 70vh; padding: 14px; border-radius: var(--radius);
+  cursor: grab; touch-action: none; user-select: none; scrollbar-width: none;
   background: #1d2131; border: 2px solid #3a4054; box-shadow: inset 0 0 0 2px #121521;
 }
 .vt-canvas { display: inline-block; min-width: 100%; }
@@ -308,3 +309,5 @@ input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accen
 .vt-detail-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .vt-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .vt-actions input { width: 80px; padding: 3px 6px; text-align: right; }
+.vt-frame::-webkit-scrollbar { display: none; }
+.vt-frame.dragging { cursor: grabbing; }
