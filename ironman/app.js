@@ -4,7 +4,7 @@
 const REPO = 'https://raw.githubusercontent.com/NotEnoughUpdates/NotEnoughUpdates-REPO/master/items/';
 const ITEMS_API = 'https://api.hypixel.net/v2/resources/skyblock/items';
 const STORE_KEY = 'ironman-planner.v1';
-const RECIPE_CACHE_KEY = 'ironman-planner.recipes.v1';
+const RECIPE_CACHE_KEY = 'ironman-planner.recipes.v2';
 const LIST_CACHE_KEY = 'ironman-planner.list.v1';
 const RECIPE_TTL = 3 * 864e5;   // 3 days
 const LIST_TTL = 864e5;         // 1 day
@@ -130,6 +130,7 @@ function parseItem(d) {
     req,
     wiki: (d.info || []).find(u => /^https?:\/\//.test(u)) || null,
     vanilla: !!d.vanilla,
+    glint: /\bench:\[/.test(d.nbttag || ''),
     recipes,
   };
 }
@@ -423,9 +424,19 @@ const ICON = id => (!localIcons || localIcons.has(iconFile(id)))
   : 'https://sky.coflnet.com/static/icon/' + encodeURIComponent(id);
 /** Broken icon: try coflnet once, then show the item's first letter. */
 window.iconFail = img => {
-  if (!img.dataset.tried) { img.dataset.tried = '1'; img.src = 'https://sky.coflnet.com/static/icon/' + encodeURIComponent(img.dataset.id); return; }
+  const wrap = img.parentElement;
+  if (!img.dataset.tried) {
+    img.dataset.tried = '1';
+    const url = 'https://sky.coflnet.com/static/icon/' + encodeURIComponent(img.dataset.id);
+    wrap.style.setProperty('--icon', `url('${url}')`);
+    img.src = url;
+    return;
+  }
+  wrap.classList.remove('glint');
   img.replaceWith(Object.assign(document.createElement('span'), { className: 'vt-letter', textContent: img.dataset.letter }));
 };
+/** Items that shimmer in-game (NEU marks them with ench:[]), or anything named Enchanted. */
+const hasGlint = id => { const i = info.get(id); return !!(i && i.glint) || /^ENCHANTED_/.test(id); };
 let selectedKey = null;
 function shortNum(n) {
   if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M';
@@ -440,7 +451,7 @@ function picHTML(p, n) {
   const tip = `${num(n.qty)}× ${plainName(n.id)}${n.recipe ? ' · ' + recipeLabel(n.recipe) : n.raw ? ' · gather' : ''}`;
   return `<div class="vt-node">
     <button class="${cls}" data-select="${esc(n.key)}" title="${esc(tip)}">
-      <img src="${ICON(n.id)}" alt="" loading="lazy" data-id="${esc(n.id)}" data-letter="${esc(plainName(n.id).charAt(0))}" onerror="iconFail(this)">
+      <span class="vt-icon ${hasGlint(n.id) ? 'glint' : ''}" style="--icon:url('${ICON(n.id)}')"><img src="${ICON(n.id)}" alt="" loading="lazy" data-id="${esc(n.id)}" data-letter="${esc(plainName(n.id).charAt(0))}" onerror="iconFail(this)"></span>
       <span class="vt-n">${shortNum(n.qty)}</span>
     </button>
     ${open ? `<div class="vt-kids">${n.children.map(c => picHTML(p, c)).join('')}</div>` : ''}

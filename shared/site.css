@@ -311,3 +311,15 @@ input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accen
 .vt-actions input { width: 80px; padding: 3px 6px; text-align: right; }
 .vt-frame::-webkit-scrollbar { display: none; }
 .vt-frame.dragging { cursor: grabbing; }
+
+/* enchantment glint: a purple sheen clipped to the icon's own shape */
+.vt-icon { position: relative; width: 32px; height: 32px; display: block; pointer-events: none; }
+.vt-icon.glint::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(120deg, transparent 0 30%, rgba(200, 120, 255, 1) 42%, rgba(140, 70, 255, .8) 50%, transparent 62% 100%);
+  background-size: 300% 100%; background-repeat: no-repeat;
+  -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat;
+  mix-blend-mode: screen; animation: glint 2.8s linear infinite;
+}
+@keyframes glint { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+@media (prefers-reduced-motion: reduce) { .vt-icon.glint::after { animation: none; background-position: 50% 0; opacity: .6; } }
