@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../shared/site.css?v=20261112d">
+  <link rel="stylesheet" href="../shared/site.css?v=20261112e">
 </head>
 <body>
   <div class="sitebar">
@@ -50,7 +50,33 @@
           <input id="qty" type="number" min="1" value="1">
         </label>
       </div>
+      <div class="quick">
+        <span class="muted">Sets:</span>
+        <span id="presetChips" class="chips"></span>
+        <button id="openCustom" class="btn ghost small">＋ Custom item</button>
+      </div>
       <p id="status" class="status" aria-live="polite"></p>
+    </section>
+
+    <section id="customEditor" class="custom-ed" hidden>
+      <div class="custom-head">
+        <h3 id="customTitle">New custom item</h3>
+        <button id="closeCustom" class="btn ghost small">Close</button>
+      </div>
+      <p class="hint">Group several items into one target, for example a full armor set or every item for a build. The planner adds up everything they need.</p>
+      <label class="field">Name
+        <input id="customName" type="text" maxlength="60" placeholder="e.g. Full Divan Armor">
+      </label>
+      <div class="search-box">
+        <input id="customSearch" type="search" autocomplete="off" spellcheck="false" placeholder="Add an item… e.g. Hyperion, Helmet of Divan">
+        <div id="customSuggest" class="suggest" role="listbox" hidden></div>
+      </div>
+      <div id="customRows"></div>
+      <div class="custom-actions">
+        <button id="saveCustom" class="btn">Save and plan it</button>
+        <button id="deleteCustom" class="btn ghost danger" hidden>Delete</button>
+      </div>
+      <div id="customList"></div>
     </section>
 
     <section id="empty" class="empty">
@@ -76,6 +102,7 @@
         </div>
         <div class="target-actions">
           <a id="targetWiki" class="btn ghost" target="_blank" rel="noopener">Wiki ↗</a>
+          <button id="editCustom" class="btn ghost" hidden>Edit set</button>
           <button id="resetHave" class="btn ghost">Clear inventory</button>
           <button id="exportPlan" class="btn ghost">Export</button>
           <button id="importPlan" class="btn ghost">Import</button>
@@ -104,6 +131,6 @@
   </footer>
 
   <div id="toast" class="toast" hidden></div>
-  <script src="app.js?v=20261112d"></script>
+  <script src="app.js?v=20261112e"></script>
 </body>
 </html>

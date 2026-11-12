@@ -87,6 +87,23 @@ input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accen
 .suggest button.active, .suggest button:hover { background: var(--card2); }
 .suggest .id { color: var(--muted); font-size: 12px; font-family: ui-monospace, Consolas, monospace; }
 .status { min-height: 1.5em; margin: 6px 2px 0; color: var(--muted); font-size: 13px; }
+.quick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; font-size: 13px; }
+button.chip { cursor: pointer; font: inherit; font-size: 12px; }
+button.chip:hover { border-color: var(--muted); color: var(--text); }
+.chip.custom { color: #f39cf3; border-color: #5e2a5e; background: #261326; }
+
+/* custom item editor */
+.custom-ed { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin: 10px 0; }
+.custom-ed .field { margin: 10px 0; }
+.custom-ed .field input { padding: 9px 10px; max-width: 360px; }
+.custom-ed .search-box input { font-size: 14px; padding: 9px 12px; background: var(--card2); }
+.custom-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.custom-head h3 { margin: 0; }
+.c-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.c-row .grow { flex: 1; min-width: 0; }
+.c-row input { width: 80px; padding: 5px 8px; }
+.custom-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+#customList { margin-top: 14px; }
 
 /* empty */
 .empty { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; margin-top: 12px; }

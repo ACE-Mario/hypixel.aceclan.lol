@@ -168,6 +168,7 @@ function nameHTML(id) {
 }
 const plainName = id => nameStr(id).replace(/§./g, '').trim();
 function wikiLink(id) {
+  if (isCustom(id) || id === COIN) return '';
   const i = info.get(id);
   const url = (i && i.wiki) || 'https://hypixelskyblock.minecraft.wiki/w/Special:Search?search=' + encodeURIComponent(plainName(id));
   return `<a class="wiki" href="${esc(url)}" target="_blank" rel="noopener" title="Open on the wiki">wiki ↗</a>`;
@@ -182,6 +183,24 @@ function makePlan(name) {
   return p;
 }
 const plan = () => state.plans.find(p => p.id === state.active) || null;
+
+/* ---------- custom items: one target made of several items ---------- */
+const SET4 = ['HELMET', 'CHESTPLATE', 'LEGGINGS', 'BOOTS'];
+const PRESETS = [
+  ['Full Divan Armor', 'DIVAN'], ['Full Sorrow Armor', 'SORROW'], ['Full Glacite Armor', 'GLACITE'],
+  ['Full Final Destination', 'FINAL_DESTINATION'], ['Full Fermento Armor', 'FERMENTO'], ['Full Superior Dragon', 'SUPERIOR_DRAGON'],
+].map(([name, base]) => ({ id: 'CUSTOM_FULL_' + base, name, preset: true, items: SET4.map(s => ({ id: base + '_' + s, count: 1 })) }));
+const isCustom = id => /^CUSTOM_/.test(id);
+state.custom = state.custom || [];
+const allCustom = () => PRESETS.concat(state.custom);
+const customById = id => allCustom().find(c => c.id === id) || null;
+function registerCustom(c) {
+  info.set(c.id, {
+    name: '§d' + c.name, req: [], wiki: null, vanilla: false, glint: false, custom: true,
+    recipes: [{ type: 'set', inputs: c.items.map(i => ({ id: i.id, count: i.count })), coins: 0, count: 1 }],
+  });
+}
+allCustom().forEach(registerCustom);
 
 function isRaw(p, id, inf) {
   if (p.raw[id] !== undefined) return p.raw[id];
@@ -236,7 +255,8 @@ function compute(p) {
       raw.set(COIN, (raw.get(COIN) || 0) + q);
     }
     const s = steps.get(id);
-    if (s && s.ri === ri) { s.crafts += crafts; s.out += crafts * r.count; }
+    if (r.type === 'set') { /* a custom bundle isn't a real craft */ }
+    else if (s && s.ri === ri) { s.crafts += crafts; s.out += crafts * r.count; }
     else if (!s) steps.set(id, { id, ri, recipe: r, crafts, out: crafts * r.count });
     return n;
   }
@@ -293,6 +313,8 @@ function render(res) {
   $('#targetName').innerHTML = `${num(p.qty)}× ${nameHTML(p.target)}`;
   const tInf = info.get(p.target);
   $('#targetReq').innerHTML = tInf ? tInf.req.map(r => `<span class="chip req">🔒 ${esc(r)}</span>`).join('') : '';
+  $('#targetWiki').hidden = isCustom(p.target);
+  $('#editCustom').hidden = !state.custom.some(c => c.id === p.target);
   $('#targetWiki').href = (tInf && tInf.wiki) || 'https://hypixelskyblock.minecraft.wiki/w/Special:Search?search=' + encodeURIComponent(plainName(p.target));
   $('#qty').value = p.qty;
 
@@ -374,7 +396,7 @@ function renderRaw(p, res) {
 
 const openState = new Map(); // key -> bool (user toggled)
 function isOpen(n) { return openState.has(n.key) ? openState.get(n.key) : n.depth < (state.treeView === 'list' ? 2 : 8); }
-const RTYPE = { craft: ['Craft', ''], forge: ['Forge', 'forge'], npc: ['NPC shop', 'npc'], kat: ['Kat upgrade', 'kat'], trade: ['Trade', 'npc'] };
+const RTYPE = { craft: ['Craft', ''], forge: ['Forge', 'forge'], npc: ['NPC shop', 'npc'], kat: ['Kat upgrade', 'kat'], trade: ['Trade', 'npc'], set: ['Custom set', 'custom'] };
 function recipeLabel(r) {
   const ins = r.inputs.map(i => `${num(i.count)} ${plainName(i.id)}`);
   if (r.coins) ins.push(coins(r.coins) + ' coins');
@@ -430,7 +452,8 @@ const iconFile = id => id.replace(/[^A-Za-z0-9_]/g, c => '-' + c.charCodeAt(0) +
 let localIcons = null;
 fetch('../icons/index.json').then(r => r.ok ? r.json() : []).catch(() => [])
   .then(list => { localIcons = new Set(list); if (state.tab === 'tree' && last) render(last); });
-const ICON = id => (id = id === COIN ? 'GOLD_NUGGET' : id, !localIcons || localIcons.has(iconFile(id)))
+const iconId = id => id === COIN ? 'GOLD_NUGGET' : isCustom(id) ? ((customById(id) || {}).items || [{ id: 'CHEST' }])[0].id : id;
+const ICON = id => (id = iconId(id), !localIcons || localIcons.has(iconFile(id)))
   ? '../icons/' + iconFile(id)
   : 'https://sky.coflnet.com/static/icon/' + encodeURIComponent(id);
 /** Broken icon: try coflnet once, then show the item's first letter. */
@@ -438,7 +461,7 @@ window.iconFail = img => {
   const wrap = img.parentElement;
   if (!img.dataset.tried) {
     img.dataset.tried = '1';
-    const url = 'https://sky.coflnet.com/static/icon/' + encodeURIComponent(img.dataset.id === COIN ? 'GOLD_NUGGET' : img.dataset.id);
+    const url = 'https://sky.coflnet.com/static/icon/' + encodeURIComponent(iconId(img.dataset.id));
     wrap.style.setProperty('--icon', `url('${url}')`);
     img.src = url;
     return;
@@ -557,7 +580,7 @@ function renderSteps(p, res) {
 
 /* ---------- search ---------- */
 let sugg = [], sIdx = 0;
-function searchItems(q) {
+function searchItems(q, opts = {}) {
   q = q.trim().toLowerCase();
   if (!q) return [];
   const words = q.split(/\s+/);
@@ -569,6 +592,10 @@ function searchItems(q) {
   }
   scored.sort((a, b) => a[0] - b[0]);
   const out = scored.slice(0, 12).map(x => x[1]);
+  if (opts.custom !== false) {
+    const cs = allCustom().filter(c => words.every(w => c.name.toLowerCase().includes(w)));
+    out.unshift(...cs.slice(0, 4).map(c => ({ id: c.id, name: c.name, tier: 'MYTHIC', custom: true })));
+  }
   const asId = q.toUpperCase().replace(/\s+/g, '_');
   if (/^[A-Z0-9_;:\-]+$/.test(asId) && !listById.has(asId) && !out.some(i => i.id === asId)) {
     out.push({ id: asId, name: `Use item ID "${asId}"`, tier: 'COMMON', raw: true });
@@ -583,7 +610,7 @@ function showSuggest() {
   if (!sugg.length) { box.hidden = true; return; }
   box.innerHTML = sugg.map((i, k) => `<button type="button" role="option" data-pick="${k}" class="${k === sIdx ? 'active' : ''}">
     ${i.raw ? esc(i.name) : `<span class="mc" style="color:${MC[TIER[i.tier] || 'f']}">${esc(i.name)}</span>`}
-    <span class="id">${esc(i.id)}</span></button>`).join('');
+    <span class="id">${i.custom ? 'custom set' : esc(i.id)}</span></button>`).join('');
   box.hidden = false;
 }
 function pick(i) {
@@ -648,7 +675,8 @@ function bind() {
   });
   $('#exportPlan').addEventListener('click', async () => {
     const p = plan(); if (!p) return;
-    const code = btoa(unescape(encodeURIComponent(JSON.stringify(p))));
+    const c = isCustom(p.target) && state.custom.find(x => x.id === p.target);
+    const code = btoa(unescape(encodeURIComponent(JSON.stringify(c ? { ...p, customDef: c } : p))));
     try { await navigator.clipboard.writeText(code); toast('Plan copied to clipboard. Paste it into Import on another device.'); }
     catch { prompt('Copy this plan code:', code); }
   });
@@ -658,6 +686,7 @@ function bind() {
     try {
       const p = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
       if (!p.target) throw 0;
+      if (p.customDef && !customById(p.customDef.id)) { state.custom.push(p.customDef); registerCustom(p.customDef); renderPresets(); }
       const np = makePlan(p.name || 'Imported plan');
       Object.assign(np, { target: p.target, qty: p.qty || 1, have: p.have || {}, raw: p.raw || {}, choice: p.choice || {}, done: p.done || {} });
       saveState(); refresh(); toast('Plan imported.');
@@ -777,8 +806,115 @@ document.addEventListener('click', e => {
   document.addEventListener('pointercancel', end);
 })();
 
+/* ---------- custom item editor ---------- */
+let draft = null; // { id, name, items: [{id, count}] }
+let cSugg = [];
+function renderPresets() {
+  $('#presetChips').innerHTML = allCustom().map(c =>
+    `<button class="chip custom" data-preset="${esc(c.id)}" title="${esc(c.items.map(i => (i.count > 1 ? i.count + '× ' : '') + plainName(i.id)).join(', '))}">${esc(c.name)}</button>`).join('');
+}
+function openEditor(c) {
+  draft = c ? { id: c.id, name: c.name, items: c.items.map(i => ({ ...i })) } : { id: null, name: '', items: [] };
+  $('#customEditor').hidden = false;
+  $('#customTitle').textContent = c ? 'Edit custom item' : 'New custom item';
+  $('#customName').value = draft.name;
+  $('#deleteCustom').hidden = !c;
+  renderDraft();
+  $('#customName').focus();
+}
+function renderDraft() {
+  $('#customRows').innerHTML = draft.items.length ? draft.items.map((i, k) => `<div class="c-row">
+      <span class="grow">${nameHTML(i.id)}</span>
+      <input type="number" min="1" value="${i.count}" data-cqty="${k}" aria-label="Amount">
+      <button class="btn ghost small danger" data-cdel="${k}" title="Remove">✕</button>
+    </div>`).join('')
+    : '<p class="hint">No items yet. Search above to add some.</p>';
+  const mine = state.custom;
+  $('#customList').innerHTML = mine.length ? `<div class="hint">Your custom items:</div><div class="chips" style="margin-top:6px">${mine.map(c =>
+    `<button class="chip custom" data-cedit="${esc(c.id)}">✎ ${esc(c.name)}</button>`).join('')}</div>` : '';
+}
+function addToDraft(it) {
+  $('#customSuggest').hidden = true;
+  $('#customSearch').value = '';
+  const ex = draft.items.find(i => i.id === it.id);
+  if (ex) ex.count++; else draft.items.push({ id: it.id, count: 1 });
+  fetchItem(it.id).then(() => renderDraft());
+  renderDraft();
+  $('#customSearch').focus();
+}
+function saveDraft() {
+  draft.name = $('#customName').value.trim();
+  if (!draft.name) { toast('Give your custom item a name.'); $('#customName').focus(); return; }
+  if (!draft.items.length) { toast('Add at least one item.'); $('#customSearch').focus(); return; }
+  let c = draft.id && state.custom.find(x => x.id === draft.id);
+  if (c) Object.assign(c, { name: draft.name, items: draft.items });
+  else { c = { id: 'CUSTOM_' + Date.now().toString(36).toUpperCase(), name: draft.name, items: draft.items }; state.custom.push(c); }
+  registerCustom(c);
+  // Plans that already use it pick up the change; otherwise start a plan for it.
+  for (const p of state.plans) if (p.target === c.id) p.name = c.name;
+  $('#customEditor').hidden = true;
+  renderPresets();
+  if (plan() && plan().target === c.id) { saveState(); openState.clear(); refresh(); }
+  else pick({ id: c.id, name: c.name, custom: true });
+}
+function bindCustom() {
+  $('#openCustom').addEventListener('click', () => openEditor(null));
+  $('#editCustom').addEventListener('click', () => { const p = plan(); openEditor(p && state.custom.find(c => c.id === p.target)); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  $('#closeCustom').addEventListener('click', () => ($('#customEditor').hidden = true));
+  $('#presetChips').addEventListener('click', e => {
+    const b = e.target.closest('[data-preset]'); if (!b) return;
+    const c = customById(b.dataset.preset);
+    if (c) pick({ id: c.id, name: c.name, custom: true });
+  });
+  const cs = $('#customSearch');
+  const show = () => {
+    cSugg = searchItems(cs.value, { custom: false }).filter(i => !i.raw || /^[A-Z0-9_;:\-]+$/.test(i.id));
+    const box = $('#customSuggest');
+    if (!cSugg.length) { box.hidden = true; return; }
+    box.innerHTML = cSugg.map((i, k) => `<button type="button" data-cpick="${k}" class="${k ? '' : 'active'}">
+      ${i.raw ? esc(i.name) : `<span class="mc" style="color:${MC[TIER[i.tier] || 'f']}">${esc(i.name)}</span>`}
+      <span class="id">${esc(i.id)}</span></button>`).join('');
+    box.hidden = false;
+  };
+  cs.addEventListener('input', show);
+  cs.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); if (cSugg[0] && !$('#customSuggest').hidden) addToDraft(cSugg[0]); }
+    if (e.key === 'Escape') $('#customSuggest').hidden = true;
+  });
+  $('#customSuggest').addEventListener('mousedown', e => {
+    const b = e.target.closest('[data-cpick]');
+    if (b) { e.preventDefault(); addToDraft(cSugg[+b.dataset.cpick]); }
+  });
+  document.addEventListener('click', e => { if (!e.target.closest('#customEditor .search-box')) $('#customSuggest').hidden = true; });
+  const ed = $('#customEditor');
+  ed.addEventListener('change', e => {
+    const k = e.target.dataset.cqty;
+    if (k !== undefined) draft.items[+k].count = Math.max(1, parseInt(e.target.value, 10) || 1);
+  });
+  ed.addEventListener('click', e => {
+    const d = e.target.closest('[data-cdel]');
+    if (d) { draft.items.splice(+d.dataset.cdel, 1); renderDraft(); return; }
+    const ce = e.target.closest('[data-cedit]');
+    if (ce) openEditor(state.custom.find(c => c.id === ce.dataset.cedit));
+  });
+  $('#saveCustom').addEventListener('click', saveDraft);
+  $('#deleteCustom').addEventListener('click', () => {
+    const c = state.custom.find(x => x.id === draft.id); if (!c) return;
+    const used = state.plans.filter(p => p.target === c.id).length;
+    if (!confirm(`Delete the custom item "${c.name}"?${used ? ` ${used} plan(s) use it and will be deleted too.` : ''}`)) return;
+    state.custom = state.custom.filter(x => x !== c);
+    state.plans = state.plans.filter(p => p.target !== c.id);
+    if (!plan()) state.active = state.plans.length ? state.plans[state.plans.length - 1].id : null;
+    info.delete(c.id);
+    $('#customEditor').hidden = true;
+    saveState(); renderPresets(); refresh();
+  });
+}
+
 /* ---------- start ---------- */
 bind();
+bindCustom();
+renderPresets();
 if (state.plans.length && !plan()) state.active = state.plans[0].id;
 
 // Deep link from the other tools: ironman/?item=WHEAT_GENERATOR_5&qty=1
