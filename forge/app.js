@@ -14,6 +14,8 @@ const nameOf = id => {
 };
 const plainName = id => (byId.get(id) || {}).name || (names[id] || [])[1] || U.pretty(id);
 const forgeTime = r => r.dur * (1 - Math.min(30, Math.max(0, +st.quick || 0)) / 100);
+let running = []; // what's in the forge right now, from the profile: { slot (0-based), id, start (unix s) }
+const runEnd = j => { const r = byId.get(j.id); return r ? j.start + forgeTime(r) : null; };
 
 function startTime() {
   if (st.startMode === 'custom' && st.startAt) {
@@ -29,6 +31,15 @@ function schedule() {
   const free = Array.from({ length: st.slots }, () => t0);
   const lanes = Array.from({ length: st.slots }, () => []);
   const jobs = [];
+  let busyUntil = t0;
+  // Slots still busy with what's forging now only take new items once that's done
+  for (const j of running) {
+    const end = runEnd(j);
+    if (j.slot >= st.slots || end === null || end <= t0) continue;
+    free[j.slot] = Math.max(free[j.slot], end);
+    lanes[j.slot].push({ qi: -1, id: j.id, slot: j.slot, start: Math.max(t0, j.start), end, running: true });
+    busyUntil = Math.max(busyUntil, end);
+  }
   st.queue.forEach((q, qi) => {
     const r = byId.get(q.id);
     if (!r) return;
@@ -42,7 +53,8 @@ function schedule() {
       lanes[s].push(job); jobs.push(job);
     }
   });
-  return { t0, lanes, jobs, done: jobs.length ? Math.max(...jobs.map(j => j.end)) : t0 };
+  const done = jobs.length ? Math.max(...jobs.map(j => j.end)) : t0;
+  return { t0, lanes, jobs, done, span: Math.max(done, busyUntil) };
 }
 
 function renderQueue(sch) {
@@ -76,15 +88,15 @@ function renderQueue(sch) {
 }
 
 function renderTimeline(sch) {
-  if (!sch.jobs.length) { $('#timeline').innerHTML = '<p class="empty-note">Your forge slots will show up here.</p>'; return; }
-  const span = Math.max(1, sch.done - sch.t0);
+  if (!sch.jobs.length && sch.span <= sch.t0) { $('#timeline').innerHTML = '<p class="empty-note">Your forge slots will show up here.</p>'; return; }
+  const span = Math.max(1, sch.span - sch.t0);
   const pct = t => ((t - sch.t0) / span * 100).toFixed(3);
   $('#timeline').innerHTML = `<div class="slots">${sch.lanes.map((lane, i) => `
     <div class="slot"><div class="lab">Slot ${i + 1}</div>
-      <div class="lane">${lane.map(j => `<div class="job" style="left:${pct(j.start)}%;width:calc(${pct(j.end) - pct(j.start)}% - 2px)"
-        title="${U.esc(plainName(j.id))}: ${U.esc(U.when(j.start))} → ${U.esc(U.when(j.end))}">${U.esc(plainName(j.id))}</div>`).join('')}
+      <div class="lane">${lane.map(j => `<div class="job${j.running ? ' running' : ''}" style="left:${pct(j.start)}%;width:calc(${pct(j.end) - pct(j.start)}% - 2px)"
+        title="${j.running ? 'Forging now: ' : ''}${U.esc(plainName(j.id))}: ${U.esc(U.when(j.start))} → ${U.esc(U.when(j.end))}">${U.esc(plainName(j.id))}</div>`).join('')}
       </div></div>`).join('')}</div>
-    <div class="axis"><span>${U.esc(U.when(sch.t0))}</span><span>${U.esc(U.when(sch.t0 + span / 2))}</span><span>${U.esc(U.when(sch.done))}</span></div>`;
+    <div class="axis"><span>${U.esc(U.when(sch.t0))}</span><span>${U.esc(U.when(sch.t0 + span / 2))}</span><span>${U.esc(U.when(sch.t0 + span))}</span></div>`;
 }
 
 function renderMats() {
@@ -106,7 +118,35 @@ function renderMats() {
   <p class="hint">These are the forges' direct ingredients. Use "Plan" on a queue item to break it down to raw materials.</p>`;
 }
 
+function renderNow() {
+  const el = $('#forgeNow');
+  if (!running.length) { el.innerHTML = ''; return; }
+  const now = SB.now();
+  el.innerHTML = `<h3 class="section-h">In your forge now</h3><div class="forge-now">${running.map(j => {
+    const end = runEnd(j), ready = end !== null && end <= now;
+    return `<div class="fn-row ${ready ? 'ready' : ''}"><span class="muted">Slot ${j.slot + 1}</span><span class="grow">${nameOf(j.id)}</span>
+      <span class="nowrap">${end === null ? 'started ' + U.esc(U.when(j.start)) : ready ? '✓ ready to collect' : `ready ${U.esc(U.when(end))} · ${U.countdown(end - now)} left`}</span></div>`;
+  }).join('')}</div>
+  <p class="hint">New items in the queue go into a slot once it's free. Times use your Quick Forge % above.</p>`;
+}
+function applyProfile(d) {
+  const f = (d.member.forge && d.member.forge.forge_processes) || {};
+  running = [];
+  for (const forge of Object.values(f)) {
+    for (const p of Object.values(forge || {})) {
+      if (!p || !p.id || !p.startTime) continue;
+      running.push({ slot: Math.max(0, (+p.slot || 1) - 1), id: p.id, start: p.startTime / 1000 });
+    }
+  }
+  running.sort((a, b) => a.slot - b.slot);
+  const top = running.reduce((m, j) => Math.max(m, j.slot + 1), 0);
+  if (top > st.slots) { st.slots = Math.min(7, top); save(); }
+  render();
+  return running.length ? `${running.length} item${running.length > 1 ? 's' : ''} forging` : 'Nothing in your forge right now';
+}
+
 function render() {
+  renderNow();
   $('#slots').value = st.slots;
   $('#quick').value = st.quick;
   $('#startMode').value = st.startMode;
@@ -176,5 +216,6 @@ fetch('../data/forge.json').then(r => r.json()).then(d => {
   byId = new Map(recipes.map(r => [r.id, r]));
   st.queue = st.queue.filter(q => byId.has(q.id));
   bind(); render();
-  setInterval(() => { if (st.startMode === 'now' && st.queue.length) render(); }, 60000);
+  U.profileBar($('#profileBar'), { what: 'your forge', apply: applyProfile });
+  setInterval(() => { if (st.startMode === 'now' && (st.queue.length || running.length)) render(); }, 60000);
 }).catch(() => { $('#queue').innerHTML = '<p class="empty-note">Couldn\'t load forge recipes.</p>'; });

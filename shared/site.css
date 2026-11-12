@@ -428,3 +428,13 @@ button.chip:hover { border-color: var(--muted); color: var(--text); }
 .user-chip small { color: var(--muted); font-weight: 500; }
 .user-chip:hover { border-color: var(--accent); }
 @media (max-width: 420px) { .user-chip small { display: none; } }
+.profile-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; margin: 0 0 14px; border-radius: 10px; background: var(--card2); border: 1px solid var(--line); font-size: .9rem; }
+.profile-bar img { border-radius: 3px; image-rendering: pixelated; }
+.profile-bar .pb-msg { flex: 1; min-width: 200px; }
+.profile-bar.bad { border-color: #6b2a2a; }
+.profile-bar.bad .pb-msg { color: #ff8a8a; }
+.forge-now { display: grid; gap: 6px; margin-bottom: 14px; }
+.forge-now .fn-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-radius: 10px; background: var(--card2); border: 1px solid var(--line); }
+.forge-now .fn-row.ready { border-color: #255a3c; }
+.forge-now .grow { flex: 1; min-width: 160px; }
+.job.running { opacity: .65; background-image: repeating-linear-gradient(45deg, transparent 0 6px, rgba(255,255,255,.08) 6px 12px); }

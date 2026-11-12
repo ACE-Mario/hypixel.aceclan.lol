@@ -321,17 +321,19 @@ function prereqs(m, seen = new Set()) {
   if (m.id === 'SHELLFRUIT') { for (const id of ['TURTLELLINI', 'BLASTBERRY']) if (!seen.has(id)) { prereqs(MUT_BY_ID[id], seen); seen.add(id); } }
   return seen;
 }
+let found = null; // Set of mutation ids this profile has discovered, once loaded
 function renderGuide() {
   const q = ($('#gq').value || '').trim().toLowerCase();
-  const r = $('#gr').value;
-  const list = MUTATIONS.filter(m => (!r || m.r === r) && (!q || (m.name + ' ' + m.need.map(n => nameOf(n[0])).join(' ')).toLowerCase().includes(q)));
+  const r = $('#gr').value, f = $('#gf').value;
+  const list = MUTATIONS.filter(m => (!r || m.r === r) && (!q || (m.name + ' ' + m.need.map(n => nameOf(n[0])).join(' ')).toLowerCase().includes(q))
+    && (!f || !found || (f === 'found') === found.has(m.id)));
   const T = A.T;
   $('#guide').innerHTML = list.map(m => {
     const pre = [...prereqs(m)];
     return `<article class="card mut-card r-${m.r.toLowerCase()}">
       <div class="item-cell">${img(m.id)} <b>${nameHTML(m.id)}</b>
         <span class="chip">${m.r.toLowerCase()}</span>${m.size > 1 ? `<span class="chip">${m.size}×${m.size}</span>` : ''}
-        <span class="chip">${SOIL[m.soil]}</span></div>
+        <span class="chip">${SOIL[m.soil]}</span>${found ? (found.has(m.id) ? '<span class="chip raw">✓ discovered</span>' : '<span class="chip req">not found yet</span>') : ''}</div>
       <div class="k">Needs around it</div><div>${needHTML(m)}</div>
       ${pre.length ? `<div class="k">Mutations to grow first (${pre.length}, in order)</div><div class="path">${pre.map(id => `<span class="need">${img(id)}${nameHTML(id)}</span>`).join('')}</div>` : ''}
       <div class="k">Effects</div><div class="chips">${m.fx.length ? m.fx.map(fxChip).join('') : '<span class="muted">none</span>'}</div>
@@ -422,6 +424,7 @@ function bind() {
   $('#guide').addEventListener('click', e => { const b = e.target.closest('[data-try]'); if (b) { tryLayout(MUT_BY_ID[b.dataset.try]); window.scrollTo({ top: 0, behavior: 'smooth' }); } });
   $('#gq').addEventListener('input', renderGuide);
   $('#gr').addEventListener('change', renderGuide);
+  $('#gf').addEventListener('change', renderGuide);
 
   $('#clearPlants').addEventListener('click', () => { if (st.plants.length && confirm('Remove every plant from the layout?')) { st.plants = []; st.sel = null; save(); render(); } });
   $('#resetSlots').addEventListener('click', () => { if (confirm('Go back to the 12 starting slots?')) { st.open = defaults().open; st.plants = st.plants.filter(p => canPlace(p.id, p.r, p.c)); save(); render(); } });
@@ -434,5 +437,38 @@ function bind() {
   }
 }
 
+/* ---------- from the logged-in profile ---------- */
+const LEG_LEVELS = [1, 1, 1, 2, 2, 2, 3, 3, 4, 5]; // legendary shards per attribute level
+function shardLevel(n) { let l = 0, s = 0; while (l < 10 && s + LEG_LEVELS[l] <= n) s += LEG_LEVELS[l++]; return l; }
+async function loadGarden(force) {
+  const [p, g] = await Promise.all([U.myProfile(force), U.myGarden(force)]);
+  return { at: Math.min(p.at, g.at), member: p.member, garden: g.garden };
+}
+function applyProfile(d, fresh) {
+  const out = [];
+  const gp = d.member.garden_player_data || {};
+  found = new Set((gp.discovered_greenhouse_crops || []).map(x => String(x).toUpperCase()));
+  $('#gf').hidden = false;
+  out.push(`${found.size} of ${MUTATIONS.length} mutations discovered`);
+
+  const slots = (d.garden.greenhouse_slots || []).filter(s => s && inGrid(s.z, s.x)).map(s => key(s.z, s.x));
+  if (slots.length) {
+    const open = [...new Set([...defaults().open, ...slots])].sort();
+    if (fresh || U.changed('gh-slots', open)) {
+      st.open = open;
+      st.plants = st.plants.filter(p => canPlace(p.id, p.r, p.c));
+    }
+    out.unshift(`${open.length} unlocked slots`);
+  }
+  const stacks = (d.member.attributes && d.member.attributes.stacks) || {};
+  const shard = { timestalk: shardLevel(stacks.greenhouse_speed || 0), flora: shardLevel(stacks.unique_bonus || 0) };
+  if (fresh || U.changed('gh-shards', shard)) {
+    for (const [k, v] of Object.entries(shard)) { st.set[k] = v; const el = document.getElementById('set-' + k); if (el) el.value = v; }
+  }
+  save(); render();
+  return out.join(' · ');
+}
+
 bind();
 render();
+U.profileBar($('#profileBar'), { what: 'your Greenhouse', load: loadGarden, apply: applyProfile });

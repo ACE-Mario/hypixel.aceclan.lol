@@ -12,14 +12,26 @@ const COLORS = {
 // Shards whose own level boosts Hunting Fortune for a whole rarity: [code, rarity, fortune per level].
 const FORTUNE_SHARDS = [['C35', 'COMMON', 2], ['U8', 'UNCOMMON', 2], ['R8', 'RARE', 1], ['E5', 'EPIC', 1]];
 const CHAMELEON = 'L4';
+// Other bonus shards, using SkyShards' maths: Python and King Cobra boost black-hole shards, Sea Serpent boosts
+// those two, Tiamat boosts Sea Serpent, and Crocodile can double the output of reptile fusions.
+const PYTHON = 'R9', KING_COBRA = 'R54', SEA_SERPENT = 'E32', TIAMAT = 'L6', CROCODILE = 'R45', KRAKEN = 'L15', SHINYFISH = 'L23';
+const BONUS_SHARDS = [...FORTUNE_SHARDS.map(f => f[0]), PYTHON, KING_COBRA, SEA_SERPENT, TIAMAT, CROCODILE];
+// Shards caught in black holes: every one gets King Cobra's fortune, `true` ones also get Python's speed.
+const BLACK_HOLE = { L47: 0, L27: 0, L26: 0, L17: 0, E33: 1, E29: 0, E20: 0, E18: 1, E17: 0, E14: 0, R56: 0, R49: 0, R42: 0, R39: 1,
+  R38: 0, R36: 1, R31: 1, R21: 0, R18: 0, R6: 1, U38: 1, U36: 1, U33: 1, U32: 1, U30: 0, U29: 0, U27: 0, U18: 1, U15: 1, U12: 1,
+  C36: 1, C33: 1, C30: 1, C27: 0, C21: 1, C20: 0, C15: 1, C14: 0, C12: 1, C9: 1, C8: 0 };
+const WOODEN_BAIT = ['R29', 'L23', 'R59', 'R23', 'R49'];
+// Kuudra tiers for the Kraken shard: [run seconds, key cost, shards per run]
+const KUUDRA = { t1: [60, 155000, 1], t2: [60, 310000, 1], t3: [60, 582000, 1], t4: [60, 1164000, 1.25], t5: [100, 2328000, 1.5] };
 
 let data = null, byCode = new Map(), fusion = null, best = null;
 let st = U.readLS(KEY, null) || {};
-st = Object.assign({ hf: 0, penalty: 1, cham: 1, track: {}, tab: 'list', fuse: { code: null, qty: 1 }, f: {} }, st);
+st = Object.assign({ hf: 0, penalty: 1, cham: 1, noBait: 0, kuudra: '', kMoney: '', kTime: '', track: {}, tab: 'list', fuse: { code: null, qty: 1 }, f: {} }, st);
 const save = () => U.writeLS(KEY, st);
 
 /* ---------- helpers ---------- */
 const lvlOf = code => (st.track[code] && st.track[code].lvl) || 0;
+let owned = {}; // shard code -> how many are sitting in the Hunting Box (from the profile)
 const iconURL = s => `../icons/${s.id}.png`;
 function icon(s, cls = '') {
   return `<span class="sh-icon ${cls}"><img src="${iconURL(s)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'vt-letter',textContent:'${U.esc(s.name.charAt(0))}'}))"></span>`;
@@ -45,11 +57,37 @@ function textHTML(segs, lvl) {
 const hrs = h => !isFinite(h) ? 'not possible' : h < 1 / 60 ? '< 1m' : U.dur(h * 3600);
 
 /* ---------- hunt rates and best fusion paths ---------- */
-function rateOf(s) {
-  if (!s.rate || (s.code === CHAMELEON && !+st.cham)) return 0;
-  if (s.noFortune) return s.rate;
-  const rb = FORTUNE_SHARDS.filter(f => f[1] === s.rarity).reduce((t, f) => t + lvlOf(f[0]) * f[2], 0);
-  return s.rate * (1 + ((+st.hf || 0) + rb) / 100);
+function mults() {
+  const tiamat = 1 + 5 * lvlOf(TIAMAT) / 100;
+  const sea = 1 + 2 * lvlOf(SEA_SERPENT) / 100 * tiamat;
+  return { croc: 1 + 2 * lvlOf(CROCODILE) / 100, python: 5 * lvlOf(PYTHON) / 100 * sea, cobra: lvlOf(KING_COBRA) / 100 * sea };
+}
+/** "200k", "2.5m", "2b" -> number; empty -> Infinity (ignore key cost). */
+function money(v) {
+  const m = String(v || '').trim().toLowerCase().replace(/,/g, '').match(/^([\d.]+)\s*([kmb]?)$/);
+  if (!m) return Infinity;
+  return +m[1] * ({ k: 1e3, m: 1e6, b: 1e9 }[m[2]] || 1);
+}
+/** Kraken shards per hour from Kuudra, counting the key cost as time at your coins per hour. */
+function kuudraRate() {
+  const t = KUUDRA[st.kuudra]; if (!t) return 0;
+  const run = (+st.kTime > 0 ? +st.kTime : t[0]) + 25;
+  const mph = money(st.kMoney);
+  const costTime = mph === Infinity ? 0 : mph === 0 ? 1e12 : t[1] / mph * 3600;
+  return t[2] * 3600 / (run + costTime);
+}
+function rateOf(s, m = mults()) {
+  let rate = s.rate;
+  if (s.code === KRAKEN && !rate) rate = kuudraRate();
+  if (!rate || (s.code === CHAMELEON && !+st.cham)) return 0;
+  if (+st.noBait && WOODEN_BAIT.includes(s.code)) rate *= s.code === SHINYFISH ? 0.1 : 0.05;
+  if (s.noFortune) return rate;
+  let hf = (+st.hf || 0) + FORTUNE_SHARDS.filter(f => f[1] === s.rarity).reduce((t, f) => t + lvlOf(f[0]) * f[2], 0);
+  if (s.code in BLACK_HOLE) {
+    if (BLACK_HOLE[s.code]) rate *= 1 + m.python;
+    hf *= 1 + m.cobra;
+  }
+  return rate * (1 + hf / 100);
 }
 /**
  * Cheapest time (hours) to get one of each shard, either hunting it or fusing it.
@@ -59,8 +97,11 @@ function computeBest() {
   const n = data.shards.length;
   const cost = new Float64Array(n).fill(Infinity), direct = new Float64Array(n);
   const how = new Int32Array(n).fill(-1); // index into recipe arrays, or -1 = hunt
-  data.shards.forEach((s, i) => { const r = rateOf(s); direct[i] = r > 0 ? 1 / r : Infinity; cost[i] = direct[i]; });
-  const { out, a, b, q } = fusion;
+  const m = mults();
+  data.shards.forEach((s, i) => { const r = rateOf(s, m); direct[i] = r > 0 ? 1 / r : Infinity; cost[i] = direct[i]; });
+  const { out, a, b, rep } = fusion;
+  // Crocodile: reptile fusions make more on average
+  const q = Float64Array.from(fusion.q, (x, k) => rep[k] ? x * m.croc : x);
   const fuse = data.shards.map(s => s.fuse);
   const pen = (+st.penalty || 0) / 3600;
   for (let pass = 0; pass < 60; pass++) {
@@ -71,7 +112,7 @@ function computeBest() {
     }
     if (!changed) break;
   }
-  best = { cost, direct, how };
+  best = { cost, direct, how, q };
 }
 
 /** Expand a plan for `qty` of shard index `i` into a tree. */
@@ -81,7 +122,7 @@ function expand(i, qty, path = new Set()) {
   if (k < 0 || path.has(i)) {
     return { i, qty, hunt: true, hours: qty * best.direct[i] };
   }
-  const { a, b, q } = fusion;
+  const { a, b } = fusion, q = best.q;
   const crafts = Math.ceil(qty / q[k] - 1e-9);
   const next = new Set(path).add(i);
   const kids = a[k] === b[k]
@@ -94,14 +135,15 @@ function expand(i, qty, path = new Set()) {
 function renderStatsSummary() {
   const parts = [];
   if (+st.hf) parts.push(`${st.hf} Hunting Fortune`);
-  const lv = FORTUNE_SHARDS.filter(f => lvlOf(f[0])).map(f => `${byCode.get(f[0]).name} ${lvlOf(f[0])}`);
+  const lv = BONUS_SHARDS.filter(c => lvlOf(c)).map(c => `${byCode.get(c).name} ${lvlOf(c)}`);
   if (lv.length) parts.push(lv.join(', '));
   $('#statsSummary').textContent = parts.length ? '· ' + parts.join(' · ') : '· none set';
 }
 function cardHTML(s) {
   const t = st.track[s.code];
   const lvl = t ? t.lvl : 0, target = t ? t.target : 10;
-  const need = t ? shardsFor(s.rarity, lvl, target) : shardsFor(s.rarity, 0, 10);
+  const box = owned[s.code] || 0;
+  const need = Math.max(0, (t ? shardsFor(s.rarity, lvl, target) : shardsFor(s.rarity, 0, 10)) - box);
   const i = byCode.get(s.code).idx;
   const r = rateOf(s);
   const how = r > 0 ? `<span class="chip raw" title="Average with your Hunting Fortune">≈ ${U.num(r)}/h hunting</span>` : '<span class="chip forge">Fusion only</span>';
@@ -126,7 +168,7 @@ function cardHTML(s) {
     <div class="shard-track">
       <label>Level <select data-lvl="${s.code}">${opts(lvl, 0)}</select></label>
       <label>Goal <select data-target="${s.code}">${opts(target, 1)}</select></label>
-      <span class="need">${need ? `<b>${need}</b> more · ${hrs(need * c)}` : '✓ done'}</span>
+      <span class="need">${need ? `<b>${need}</b> more · ${hrs(need * c)}` : '✓ done'}${box ? ` <span class="muted" title="Not fused yet">(${box} in your Hunting Box)</span>` : ''}</span>
       ${need && !(r > 0 && best.how[i] < 0) && isFinite(c) ? `<button class="btn ghost small" data-plan="${s.code}" data-qty="${need}">Fusion plan</button>` : ''}
     </div>
   </article>`;
@@ -159,7 +201,7 @@ function renderTotals() {
   let need = 0, time = 0, n = 0, impossible = 0;
   for (const [code, t] of Object.entries(st.track)) {
     const s = byCode.get(code); if (!s) continue;
-    const k = shardsFor(s.rarity, t.lvl, t.target);
+    const k = Math.max(0, shardsFor(s.rarity, t.lvl, t.target) - (owned[code] || 0));
     if (!k) continue;
     n++; need += k;
     const c = best.cost[s.idx] * k;
@@ -255,7 +297,7 @@ function setTab(t) {
 function bind() {
   document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) setTab(b.dataset.tab); });
   const lvlSel = v => Array.from({ length: 11 }, (_, k) => `<option ${k === v ? 'selected' : ''}>${k}</option>`).join('');
-  for (const [code] of FORTUNE_SHARDS) {
+  for (const code of BONUS_SHARDS) {
     const el = $('#lvl-' + code);
     el.innerHTML = lvlSel(lvlOf(code));
     el.addEventListener('change', () => setLevel(code, +el.value));
@@ -264,6 +306,15 @@ function bind() {
   $('#hf').addEventListener('change', e => { st.hf = Math.max(0, +e.target.value || 0); save(); renderAll(); });
   $('#penalty').addEventListener('change', e => { st.penalty = Math.max(0, +e.target.value || 0); save(); renderAll(); });
   $('#cham').addEventListener('change', e => { st.cham = +e.target.value; save(); renderAll(); });
+  const opt = { noBait: 'noBait', kuudra: 'kuudra', kMoney: 'kMoney', kTime: 'kTime' };
+  for (const [id, k] of Object.entries(opt)) {
+    $('#' + id).value = st[k];
+    $('#' + id).addEventListener('change', e => { st[k] = e.target.value; save(); renderAll(); });
+  }
+  $('#maxBonus').addEventListener('click', () => {
+    for (const c of BONUS_SHARDS) { const r = st.track[c] || (st.track[c] = { lvl: 0, target: 10 }); r.lvl = 10; r.target = 10; $('#lvl-' + c).value = 10; }
+    save(); renderAll();
+  });
 
   const fam = [...new Set(data.shards.flatMap(s => s.family))].sort();
   $('#fFamily').innerHTML += fam.map(f => `<option>${U.esc(f)}</option>`).join('');
@@ -305,6 +356,49 @@ function setLevel(code, v) {
   save(); renderAll();
 }
 
+/* ---------- from the logged-in profile ---------- */
+const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+/** Shards fused into an attribute -> its level. */
+function levelFromStacks(rarity, n) {
+  const per = data.levelling[rarity] || [];
+  let lvl = 0, sum = 0;
+  while (lvl < per.length && sum + per[lvl] <= n) sum += per[lvl++];
+  return lvl;
+}
+function applyProfile(d, fresh) {
+  const m = d.member;
+  const stacks = (m.attributes && m.attributes.stacks) || {};
+  const byAbility = new Map(data.shards.map(s => [norm(s.ability), s]));
+  // Shards waiting in the Hunting Box
+  owned = {};
+  const byId = new Map(data.shards.map(s => [s.id, s]));
+  for (const o of (m.shards && m.shards.owned) || []) {
+    const s = byId.get('SHARD_' + o.type); if (s && o.amount_owned > 0) owned[s.code] = o.amount_owned;
+  }
+  let n = 0, bonus = 0;
+  const levels = {};
+  for (const [k, v] of Object.entries(stacks)) {
+    const s = byAbility.get(norm(k));
+    if (!s || !(v > 0)) continue;
+    levels[s.code] = levelFromStacks(s.rarity, v);
+  }
+  const apply = fresh || U.changed('shards', levels);
+  for (const [code, lvl] of Object.entries(levels)) {
+    n++;
+    if (BONUS_SHARDS.includes(code) && lvl) bonus++;
+    if (!apply) continue;
+    const t = st.track[code];
+    if (t) { t.lvl = lvl; if (t.target < lvl) t.target = lvl; } else st.track[code] = { lvl, target: lvl };
+    const sel = document.getElementById('lvl-' + code);
+    if (sel) sel.value = lvl;
+  }
+  if (apply) save();
+  renderAll();
+  const box = Object.values(owned).reduce((a, b) => a + b, 0);
+  if (!n && !box) return 'No attribute shards on this profile yet';
+  return `${n} attribute${n === 1 ? '' : 's'} (${bonus} bonus shard${bonus === 1 ? '' : 's'})${box ? ` and ${U.num(box)} shards in the Hunting Box` : ''}`;
+}
+
 /* ---------- start ---------- */
 (async function start() {
   try {
@@ -312,7 +406,8 @@ function setLevel(code, v) {
     data = d;
     data.shards.forEach((s, i) => { s.idx = i; byCode.set(s.code, s); });
     // Flatten recipes into parallel arrays for speed: output, input A, input B, output quantity.
-    const out = [], a = [], b = [], q = [];
+    const out = [], a = [], b = [], q = [], rep = [];
+    const reptile = s => s.family.includes('Reptile');
     for (const [o, byQty] of Object.entries(f)) {
       const oi = byCode.get(o); if (!oi) continue;
       for (const [qty, list] of Object.entries(byQty)) {
@@ -320,13 +415,14 @@ function setLevel(code, v) {
           const [x, y] = pair.split(',');
           const xi = byCode.get(x), yi = byCode.get(y);
           if (!xi || !yi) continue;
-          out.push(oi.idx); a.push(xi.idx); b.push(yi.idx); q.push(+qty);
+          out.push(oi.idx); a.push(xi.idx); b.push(yi.idx); q.push(+qty); rep.push(reptile(xi) || reptile(yi) ? 1 : 0);
         }
       }
     }
-    fusion = { out: Int32Array.from(out), a: Int32Array.from(a), b: Int32Array.from(b), q: Float64Array.from(q) };
+    fusion = { out: Int32Array.from(out), a: Int32Array.from(a), b: Int32Array.from(b), q: Float64Array.from(q), rep: Uint8Array.from(rep) };
     bind();
     setTab(st.tab === 'fuse' ? 'fuse' : 'list');
+    U.profileBar($('#profileBar'), { what: 'your shard levels', apply: applyProfile });
   } catch (err) {
     $('#shards').innerHTML = '<p class="empty-note">Could not load the shard data. Try refreshing.</p>';
     console.error(err);

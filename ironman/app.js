@@ -178,7 +178,8 @@ function wikiLink(id) {
 let state = readLS(STORE_KEY, null) || { plans: [], active: null, tab: 'raw', hideDone: false };
 function saveState() { writeLS(STORE_KEY, state); }
 function makePlan(name) {
-  const p = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, target: null, qty: 1, have: {}, raw: {}, choice: {}, done: {} };
+  const counts = profileCounts || {};
+  const p = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, target: null, qty: 1, have: { ...counts }, fromProfile: Object.keys(counts), raw: {}, choice: {}, done: {} };
   state.plans.push(p); state.active = p.id; saveState();
   return p;
 }
@@ -386,7 +387,7 @@ function renderRaw(p, res) {
   $('#tab-raw').innerHTML = `
     <div class="toolbar">
       <label><input type="checkbox" id="hideDone" ${state.hideDone ? 'checked' : ''}> Hide finished</label>
-      <span>Type how many you have of each item. Everything is saved in this browser.</span>
+      <span>${U.login() ? 'Filled in from your profile. Type over any amount (minion and island chests aren\'t in the API).' : 'Type how many you have of each item. Everything is saved in this browser.'}</span>
     </div>
     <table class="table">
       <thead><tr><th>Item</th><th class="num">Needed</th><th class="num">Have</th><th class="num">Left</th><th class="barcell">Progress</th></tr></thead>
@@ -911,6 +912,42 @@ function bindCustom() {
   });
 }
 
+/* ---------- from the logged-in profile ---------- */
+let profileCounts = null;
+/** Everything the profile is holding: sacks, inventory, ender chest, backpacks, vault, wardrobe, equipment, coins. */
+async function profileItems(d) {
+  const inv = d.member.inventory;
+  if (!inv || (!inv.sacks_counts && !inv.inv_contents)) return null;
+  const counts = {};
+  const add = (id, n) => { if (id && n > 0) counts[id] = (counts[id] || 0) + n; };
+  for (const [id, n] of Object.entries(inv.sacks_counts || {})) add(id, n);
+  const blobs = [inv.inv_contents, inv.ender_chest_contents, inv.personal_vault_contents, inv.wardrobe_contents, inv.inv_armor, inv.equipment_contents,
+    ...Object.values(inv.backpack_contents || {}), ...Object.entries(inv.bag_contents || {}).filter(([k]) => k !== 'sacks_bag').map(([, v]) => v)];
+  for (const b of blobs) {
+    if (!b || !b.data) continue;
+    try { for (const it of await U.nbtItems(b.data)) add(it.id, it.count); } catch (e) { console.warn('Skipped unreadable storage', e); }
+  }
+  const coins = (d.member.currencies && d.member.currencies.coin_purse || 0) + (d.profile.banking && d.profile.banking.balance || 0);
+  if (coins) counts[COIN] = Math.floor(coins);
+  return counts;
+}
+async function applyProfile(d, fresh) {
+  const counts = await profileItems(d);
+  if (!counts) return 'Your Inventory API is off, so items can\'t be read. Turn it on in SkyBlock Menu → Settings → API Settings';
+  const n = Object.keys(counts).length;
+  if (fresh || U.changed('ironman', counts)) {
+    for (const p of state.plans) {
+      // items we filled in last time but that are gone now go back to 0; anything typed by hand for other items stays
+      for (const id of p.fromProfile || []) if (!(id in counts)) delete p.have[id];
+      Object.assign(p.have, counts);
+      p.fromProfile = Object.keys(counts);
+    }
+    saveState(); refresh();
+  }
+  profileCounts = counts;
+  return `"Have" filled in from ${U.num(n)} item types in your sacks, storage and purse`;
+}
+
 /* ---------- start ---------- */
 bind();
 bindCustom();
@@ -939,3 +976,4 @@ if (state.plans.length && !plan()) state.active = state.plans[0].id;
 })();
 refresh();
 loadItemList();
+U.profileBar($('#profileBar'), { what: 'what you have', apply: applyProfile });

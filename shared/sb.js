@@ -142,6 +142,122 @@ const U = (() => {
     });
   }
 
+  /* ---------- the logged-in profile's data (cached for a few minutes per tab) ---------- */
+  const CACHE_TTL = 5 * 60e3, memo = {};
+  async function cachedApi(key, path, force) {
+    if (!force) {
+      if (memo[key] && Date.now() - memo[key].t < CACHE_TTL) return memo[key];
+      try { const c = JSON.parse(sessionStorage.getItem(key)); if (c && Date.now() - c.t < CACHE_TTL) return (memo[key] = c); } catch { /* none */ }
+    }
+    const c = { t: Date.now(), j: await hypixel(path) };
+    memo[key] = c;
+    try { sessionStorage.setItem(key, JSON.stringify(c)); } catch { /* too big for sessionStorage: memory only */ }
+    return c;
+  }
+  /** { at, profile, member, login } for the logged-in profile, or null when not logged in. */
+  async function myProfile(force = false) {
+    const l = login(); if (!l) return null;
+    const c = await cachedApi('ace-hypixel.p.' + l.profileId, '/v2/skyblock/profile?profile=' + encodeURIComponent(l.profileId), force);
+    const p = c.j.profile;
+    if (!p || !p.members || !p.members[l.uuid]) throw new Error(`Couldn't find ${l.name} on the ${l.cuteName} profile any more. Log in again to pick a profile.`);
+    return { at: c.t, profile: p, member: p.members[l.uuid], login: l };
+  }
+  /** Garden data for the logged-in profile ({} when they have no Garden). */
+  async function myGarden(force = false) {
+    const l = login(); if (!l) return null;
+    try {
+      const c = await cachedApi('ace-hypixel.g.' + l.profileId, '/v2/skyblock/garden?profile=' + encodeURIComponent(l.profileId), force);
+      return { at: c.t, garden: c.j.garden || {}, login: l };
+    } catch (e) { if (e.status === 404) return { at: Date.now(), garden: {}, login: l }; throw e; }
+  }
+  const apiError = e => e.status === 403 ? "The site's Hypixel API key has expired, so profile data can't load right now."
+    : e.status === 429 ? 'Too many requests to Hypixel right now. Try Refresh in a minute.' : (e.message || 'Could not load profile data.');
+
+  /**
+   * Remembers a fingerprint of profile data per page so it's only applied again when it changes in game;
+   * anything typed by hand stays until then. Returns true when `value` is new.
+   */
+  function changed(key, value) {
+    const sig = JSON.stringify(value);
+    const all = readLS('ace-hypixel.applied.v1', {});
+    const k = (login() || {}).profileId + ':' + key;
+    if (all[k] === sig) return false;
+    all[k] = sig; writeLS('ace-hypixel.applied.v1', all);
+    return true;
+  }
+
+  /**
+   * A small "From your profile" bar. `apply(data, fresh)` uses the data and returns a short message;
+   * `fresh` is true when the person pressed Refresh (apply everything again).
+   */
+  function profileBar(host, { what, load = myProfile, apply }) {
+    if (!host) return;
+    const l = login();
+    const bar = document.createElement('div');
+    bar.className = 'profile-bar';
+    host.appendChild(bar);
+    if (!l) {
+      bar.innerHTML = `<span>Log in to fill in ${esc(what)} from your SkyBlock profile.</span> <a href="../?login">Log in</a>`;
+      return;
+    }
+    bar.innerHTML = `<img src="${avatar(l.uuid, 24)}" alt="" width="20" height="20"><span class="pb-msg"></span><button type="button" class="btn ghost small">Refresh</button>`;
+    const msg = bar.querySelector('.pb-msg'), btn = bar.querySelector('button');
+    const run = async force => {
+      btn.disabled = true; bar.classList.remove('bad');
+      msg.textContent = `Loading ${what} from ${l.name} on ${l.cuteName}…`;
+      try {
+        const d = await load(force);
+        const ago = Math.round((Date.now() - d.at) / 60000);
+        msg.textContent = `${await apply(d, force)} · from ${l.name} on ${l.cuteName}, ${ago ? ago + 'm ago' : 'just now'}`;
+      } catch (e) { bar.classList.add('bad'); msg.textContent = apiError(e); console.error(e); }
+      btn.disabled = false;
+    };
+    btn.addEventListener('click', () => run(true));
+    run(false);
+  }
+
+  /** Decode a gzip+base64 NBT inventory from the API into [{ id, count, name }]. */
+  async function nbtItems(b64) {
+    if (!b64 || typeof DecompressionStream === 'undefined') return [];
+    const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const buf = new Uint8Array(await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
+    const dv = new DataView(buf.buffer), td = new TextDecoder();
+    let o = 0;
+    const str = () => { const n = dv.getUint16(o); o += 2; const s = td.decode(buf.subarray(o, o + n)); o += n; return s; };
+    function tag(t) {
+      switch (t) {
+        case 1: return dv.getInt8(o++);
+        case 2: { const v = dv.getInt16(o); o += 2; return v; }
+        case 3: { const v = dv.getInt32(o); o += 4; return v; }
+        case 4: { o += 8; return 0; }
+        case 5: { const v = dv.getFloat32(o); o += 4; return v; }
+        case 6: { const v = dv.getFloat64(o); o += 8; return v; }
+        case 7: { const n = dv.getInt32(o); o += 4 + n; return null; }
+        case 8: return str();
+        case 9: { const et = dv.getInt8(o++), n = dv.getInt32(o); o += 4; const a = []; for (let i = 0; i < n; i++) a.push(tag(et)); return a; }
+        case 10: { const c = {}; for (;;) { const tt = dv.getInt8(o++); if (!tt) return c; const k = str(); c[k] = tag(tt); } }
+        case 11: { const n = dv.getInt32(o); o += 4 + 4 * n; return null; }
+        case 12: { const n = dv.getInt32(o); o += 4 + 8 * n; return null; }
+      }
+      throw new Error('Unreadable item data');
+    }
+    const rt = dv.getInt8(o++); str();
+    const root = tag(rt);
+    const out = [];
+    for (const it of root.i || []) {
+      const ea = it && it.tag && it.tag.ExtraAttributes;
+      if (!ea || !ea.id) continue;
+      let id = ea.id;
+      // Enchanted books are stored per enchant in recipe data (e.g. SHARPNESS;5)
+      if (id === 'ENCHANTED_BOOK' && ea.enchantments) {
+        const e = Object.entries(ea.enchantments);
+        if (e.length === 1) id = e[0][0].toUpperCase() + ';' + e[0][1];
+      }
+      out.push({ id, count: it.Count || 1, name: it.tag.display && it.tag.display.Name });
+    }
+    return out;
+  }
+
   /** "Logged in as" chip in the top bar of every tool page. */
   function userChip() {
     const nav = document.querySelector('.sitebar nav, .nav nav');
@@ -167,5 +283,6 @@ const U = (() => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', userChip); else userChip();
 
   return { esc, num, MC, countdown, dur, when, named, mcText, plain, readLS, writeLS, pretty, roman, apiKey, hypixel,
-    login, setLogin, skipped, skipLogin, avatar, MODES, lookupPlayer, skyblockProfiles, userChip };
+    login, setLogin, skipped, skipLogin, avatar, MODES, lookupPlayer, skyblockProfiles, userChip,
+    myProfile, myGarden, apiError, changed, profileBar, nbtItems };
 })();
