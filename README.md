@@ -14,6 +14,8 @@ ACE Clan's Hypixel SkyBlock tools. This is a separate site from the main clan si
   mutation spots. The crop and mutation facts live in `greenhouse/data.js`, copied by hand from the
   wiki's Greenhouse and Mutations pages, so update that file when Hypixel changes mutations.
 - `shards/`: Attribute Shards. Level tracker and fusion planner (cheapest time to each shard).
+- `talismans/`: Talisman Tracker. Magical Power, missing accessories (only the next tier in each upgrade
+  line by default) and how to get each one. Reads the Accessory Bag when logged in.
 - `config.js`: site settings, including the shared Hypixel API key every visitor uses. Development keys
   expire, so edit this file (on GitHub: Edit button) whenever the key changes.
 - `shared/`: the shared stylesheet (`site.css`) and helpers (`sb.js`: SkyBlock calendar, formatting).
@@ -26,6 +28,9 @@ ACE Clan's Hypixel SkyBlock tools. This is a separate site from the main clan si
 - `data/shards.json` and `data/fusion.json`: shard list (NEU) plus effects, hunt rates and fusion
   recipes from [SkyShards](https://github.com/Campionnn/SkyShards) (MIT, see `data/SKYSHARDS-LICENSE.txt`).
   Refresh with `python scripts/extract_shards.py`, which also downloads any new shard icons.
+
+- `data/accessories.json`: every accessory (Hypixel items API) with upgrade lines and recipes (NEU).
+  Refresh with `python scripts/extract_accessories.py` when new accessories come out.
 
 It's a static site with no build step, hosted on GitHub Pages with the custom domain in `CNAME`.
 

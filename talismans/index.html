@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Talisman Tracker · ACE Hypixel</title>
+  <meta name="description" content="See which Hypixel SkyBlock accessories you're missing, how much Magical Power each one adds, and how to get it on Ironman.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/site.css?v=20261112m">
+</head>
+<body>
+  <div class="sitebar">
+    <div class="wrap sitebar-inner">
+      <a class="ace" href="../">ACE<span>.</span> <small>Hypixel</small></a>
+      <nav><a href="../">All tools</a></nav>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <h2>Talisman Tracker</h2>
+        <p>See which accessories you're missing, how much Magical Power each one adds, and how to get it yourself.</p>
+      </div>
+      <div class="clock">
+        <div class="k">Magical Power</div>
+        <div class="v" id="mp">0</div>
+        <div class="hint" id="mpInfo"></div>
+      </div>
+    </div>
+
+    <div id="profileBar"></div>
+    <div id="stats" class="stats"></div>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="missing" class="tab">Missing</button>
+      <button role="tab" data-tab="owned" class="tab">Owned</button>
+    </nav>
+
+    <section class="panel">
+      <div class="toolbar shard-filters">
+        <input id="q" type="search" placeholder="Search accessories or requirements…" autocomplete="off">
+        <select id="fTier">
+          <option value="">All rarities</option>
+          <option>COMMON</option><option>UNCOMMON</option><option>RARE</option><option>EPIC</option><option>LEGENDARY</option><option>MYTHIC</option><option>SPECIAL</option>
+        </select>
+        <select id="fHow">
+          <option value="">Any way to get it</option><option value="craft">Crafted</option><option value="forge">Forged</option>
+          <option value="trade">Traded / NPC</option><option value="other">Dropped or other</option>
+        </select>
+        <select id="sort">
+          <option value="gain">Most Magical Power first</option><option value="name">A to Z</option><option value="tier">Rarity</option>
+        </select>
+        <label id="nextWrap"><input type="checkbox" id="nextOnly"> Only the next upgrade in each line</label>
+        <label id="riftWrap"><input type="checkbox" id="showRift"> Include Rift accessories</label>
+      </div>
+      <p class="hint" id="count"></p>
+      <div id="list"></div>
+    </section>
+  </main>
+
+  <footer class="wrap foot">Accessory list from the Hypixel API, upgrade lines and recipes from the <a href="https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO" target="_blank" rel="noopener">NotEnoughUpdates repo</a>. Not affiliated with Hypixel or Mojang.</footer>
+  <script src="../config.js"></script>
+  <script src="../shared/sb.js?v=20261112m"></script>
+  <script src="app.js?v=20261112m"></script>
+</body>
+</html>

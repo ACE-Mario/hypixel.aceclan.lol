@@ -216,7 +216,7 @@ const U = (() => {
     run(false);
   }
 
-  /** Decode a gzip+base64 NBT inventory from the API into [{ id, count, name }]. */
+  /** Decode a gzip+base64 NBT inventory from the API into [{ id, count, name, lore, ea (ExtraAttributes) }]. */
   async function nbtItems(b64) {
     if (!b64 || typeof DecompressionStream === 'undefined') return [];
     const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
@@ -253,7 +253,8 @@ const U = (() => {
         const e = Object.entries(ea.enchantments);
         if (e.length === 1) id = e[0][0].toUpperCase() + ';' + e[0][1];
       }
-      out.push({ id, count: it.Count || 1, name: it.tag.display && it.tag.display.Name });
+      const d = it.tag.display || {};
+      out.push({ id, count: it.Count || 1, name: d.Name, lore: d.Lore || [], ea });
     }
     return out;
   }
