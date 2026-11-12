@@ -153,7 +153,11 @@ function fetchItem(id) {
 }
 
 const COIN = 'SKYBLOCK_COIN';
+const PUA = /[-]/g; // Minecraft font glyphs (e.g. the gemstone symbol) show as boxes on the web
 function nameStr(id) {
+  return nameRaw(id).replace(PUA, '').replace(/\s+/g, ' ');
+}
+function nameRaw(id) {
   if (id === COIN) return '§6Coins';
   const i = info.get(id);
   if (i && i.name) return i.name;
@@ -365,11 +369,50 @@ function stat(k, v, pct) {
   return `<div class="stat"><div class="k">${esc(k)}</div><div class="v">${v}</div>${bar}</div>`;
 }
 
+/* Gemstones: every tier is 80 of the one below (Perfect is 5 Flawless plus a crystal). */
+const GEM_TIERS = [['ROUGH', 1], ['FLAWED', 80], ['FINE', 6400], ['FLAWLESS', 512000], ['PERFECT', 2560000]];
+const gemOf = id => { const m = /^(ROUGH|FLAWED|FINE|FLAWLESS|PERFECT)_([A-Z]+)_GEM$/.exec(id); return m ? m[2] : null; };
+const gemId = (tier, g) => `${tier}_${g}_GEM`;
+function treeIds(n, out = new Set()) { if (n) { out.add(n.id); for (const c of n.children || []) treeIds(c, out); } return out; }
+
+/** Under a Rough gemstone row: the higher tiers you hold, all counted as Rough. */
+function gemTiersRow(p, r) {
+  const { g, tiers, worth, above } = r.gem;
+  const inputs = tiers.map(([tier, mult]) => {
+    const id = gemId(tier, g);
+    return `<label title="Each one is ${num(mult)} Rough">${esc(pretty(tier))} <input type="number" min="0" value="${p.have[id] || ''}" placeholder="0" data-have="${esc(id)}" data-focus="raw:${esc(id)}" aria-label="Have ${esc(plainName(id))}"></label>`;
+  }).join('');
+  return `<tr class="gem-sub ${r.left === 0 ? 'done' : ''}"><td colspan="5"><div class="gem-tiers">
+    <span class="muted">You have:</span> ${inputs}
+    <span class="muted">= <b>${num(worth)}</b> Rough in total${above ? ' (higher tiers than the recipe uses cannot be broken down, so they do not count)' : ''}</span>
+  </div></td></tr>`;
+}
+
 function renderRaw(p, res) {
-  const rows = [...res.raw].map(([id, q]) => {
+  // Same plan without any gemstones in hand, to get the full Rough amount each gemstone needs
+  const res0 = compute({ ...p, have: Object.fromEntries(Object.entries(p.have).filter(([id]) => !gemOf(id))) });
+  const ids0 = treeIds(res0.root);
+  const gems = new Map(); // gem -> { top: highest tier index the recipe uses }
+  for (const id of ids0) {
+    const g = gemOf(id); if (!g || !res0.raw.has(gemId('ROUGH', g))) continue;
+    const t = GEM_TIERS.findIndex(x => id.startsWith(x[0] + '_'));
+    gems.set(g, { top: Math.max(t, (gems.get(g) || { top: 0 }).top) });
+  }
+  const rows = [...res.raw].filter(([id]) => !gems.has(gemOf(id))).map(([id, q]) => {
     const h = p.have[id] || 0;
     return { id, q, h, left: Math.max(0, q - h), name: plainName(id) };
-  }).sort((a, b) => (a.id === COIN ? -1 : b.id === COIN ? 1 : 0) || (a.left === 0) - (b.left === 0) || a.name.localeCompare(b.name));
+  });
+  for (const [g, { top }] of gems) {
+    // Everything you hold up to the tier the recipe needs, counted as Rough
+    const tiers = GEM_TIERS.slice(0, top + 1);
+    const worth = tiers.reduce((t, [tier, mult]) => t + (p.have[gemId(tier, g)] || 0) * mult, 0);
+    const id = gemId('ROUGH', g);
+    const q = res0.raw.get(id);
+    const left = Math.max(0, (res.raw.get(id) || 0) - (p.have[id] || 0));
+    const above = GEM_TIERS.slice(top + 1).some(([tier]) => p.have[gemId(tier, g)]);
+    rows.push({ id, q, h: Math.min(q, q - left), left, name: plainName(id), gem: { g, tiers, worth, above } });
+  }
+  rows.sort((a, b) => (a.id === COIN ? -1 : b.id === COIN ? 1 : 0) || (a.left === 0) - (b.left === 0) || a.name.localeCompare(b.name));
   const shown = state.hideDone ? rows.filter(r => r.left > 0) : rows;
   const body = shown.map(r => {
     const inf = info.get(r.id);
@@ -379,10 +422,10 @@ function renderRaw(p, res) {
     return `<tr class="${r.left === 0 ? 'done' : ''}">
       <td><div class="item-cell">${nameHTML(r.id)} ${wikiLink(r.id)} ${breakBtn}</div></td>
       <td class="num">${num(r.q)}</td>
-      <td class="num"><input type="number" min="0" value="${r.h || ''}" placeholder="0" data-have="${esc(r.id)}" data-focus="raw:${esc(r.id)}" aria-label="Have ${esc(r.name)}"></td>
+      <td class="num">${r.gem ? `<b title="Everything below, counted as Rough">${num(r.gem.worth)}</b>` : `<input type="number" min="0" value="${p.have[r.id] || ''}" placeholder="0" data-have="${esc(r.id)}" data-focus="raw:${esc(r.id)}" aria-label="Have ${esc(r.name)}">`}</td>
       <td class="num">${r.left ? num(r.left) : '✓'}</td>
       <td class="barcell"><div class="bar ${pct >= 100 ? 'full' : ''}"><span style="width:${pct}%"></span></div></td>
-    </tr>`;
+    </tr>${r.gem ? gemTiersRow(p, r) : ''}`;
   }).join('');
   $('#tab-raw').innerHTML = `
     <div class="toolbar">

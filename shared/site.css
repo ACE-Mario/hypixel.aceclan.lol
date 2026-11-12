@@ -438,3 +438,7 @@ button.chip:hover { border-color: var(--muted); color: var(--text); }
 .forge-now .fn-row.ready { border-color: #255a3c; }
 .forge-now .grow { flex: 1; min-width: 160px; }
 .job.running { opacity: .65; background-image: repeating-linear-gradient(45deg, transparent 0 6px, rgba(255,255,255,.08) 6px 12px); }
+.table tr.gem-sub td { padding-top: 0; border-top: 0; }
+.gem-tiers { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding-left: 28px; font-size: .85rem; }
+.gem-tiers label { display: inline-flex; gap: 6px; align-items: center; }
+.gem-tiers input { width: 90px; }
