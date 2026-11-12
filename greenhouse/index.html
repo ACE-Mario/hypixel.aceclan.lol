@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Greenhouse Planner · ACE Hypixel</title>
+  <meta name="description" content="Plan your Hypixel SkyBlock Garden Greenhouse: crop effects, growth cycle time, mutation spots and unlock paths for every mutation.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/site.css?v=20261112f">
+</head>
+<body>
+  <div class="sitebar">
+    <div class="wrap sitebar-inner">
+      <a class="ace" href="../">ACE<span>.</span> <small>Hypixel</small></a>
+      <nav><a href="../">All tools</a></nav>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <h2>Greenhouse Planner</h2>
+        <p>Lay out your Greenhouse, see what each plant does to its neighbours, and find where mutations can grow.</p>
+      </div>
+      <div class="clock">
+        <div class="k">Growth cycle</div>
+        <div class="v" id="cycle">…</div>
+        <div class="hint" id="cycleInfo"></div>
+      </div>
+    </div>
+
+    <details class="controls-wrap">
+      <summary>Your upgrades and stats</summary>
+      <div class="controls">
+        <label class="field">Desk: Growth Speed tier
+          <input id="set-desk" type="number" min="0" max="9" value="0" style="width:110px">
+        </label>
+        <label class="field">Desk: Plant Yield tier
+          <input id="set-yieldDesk" type="number" min="0" max="10" value="0" style="width:110px">
+        </label>
+        <label class="field">Crop Growth stat
+          <input id="set-growth" type="number" min="0" max="1000" value="0" style="width:110px">
+        </label>
+        <label class="field">Timestalk Clone Shard level
+          <input id="set-timestalk" type="number" min="0" max="10" value="0" style="width:110px">
+        </label>
+        <label class="field">Flora Shard level
+          <input id="set-flora" type="number" min="0" max="10" value="0" style="width:110px">
+        </label>
+        <label class="field">Farming + crop fortune
+          <input id="set-ff" type="number" min="0" max="5000" value="0" style="width:110px">
+        </label>
+      </div>
+    </details>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="plan" class="tab">Planner</button>
+      <button role="tab" data-tab="guide" class="tab">Mutation guide</button>
+    </nav>
+
+    <section id="tab-plan" class="panel">
+      <div class="gh-layout">
+        <div>
+          <div id="grid" class="gh-grid"></div>
+          <div class="toolbar" style="margin-top:10px">
+            <button id="clearPlants" class="btn ghost small">Remove all plants</button>
+            <button id="resetSlots" class="btn ghost small">Starting slots only</button>
+            <button id="unlockAll" class="btn ghost small">Unlock every slot</button>
+          </div>
+          <p class="hint">Effects only reach the slots directly above, below, left and right. Mutations look at all 8 slots around an empty space (12 for 2×2, 16 for 3×3), and the plants around it must be fully grown. Faded icons show where a mutation can appear.</p>
+        </div>
+        <aside>
+          <div id="palette" class="palette"></div>
+          <div id="detail"></div>
+        </aside>
+      </div>
+      <div id="summary"></div>
+    </section>
+
+    <section id="tab-guide" class="panel" hidden>
+      <div class="toolbar shard-filters">
+        <input id="gq" type="search" placeholder="Search mutations or ingredients…" autocomplete="off">
+        <select id="gr">
+          <option value="">All rarities</option>
+          <option>COMMON</option><option>UNCOMMON</option><option>RARE</option><option>EPIC</option><option>LEGENDARY</option>
+        </select>
+      </div>
+      <div id="guide" class="mut-grid"></div>
+    </section>
+  </main>
+
+  <footer class="wrap foot">Greenhouse and mutation data from the <a href="https://hypixelskyblock.minecraft.wiki/w/Mutations" target="_blank" rel="noopener">Hypixel SkyBlock Wiki</a> (patch 0.27.2). Not affiliated with Hypixel or Mojang.</footer>
+  <div id="toast" class="toast" hidden></div>
+  <script src="../shared/sb.js?v=20261112f"></script>
+  <script src="data.js?v=20261112f"></script>
+  <script src="app.js?v=20261112f"></script>
+</body>
+</html>
