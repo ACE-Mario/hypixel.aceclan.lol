@@ -74,6 +74,14 @@
   .tool.soon { border-style: dashed; opacity: .7; }
   .tool.soon .go { color: #9ca3af; }
 
+  .apibox { padding: 20px; border-radius: 14px; background: rgba(24, 28, 37, 0.85); border: 1px solid #2b3040; }
+  .apibox p { color: #9ca3af; margin: 0 0 12px; }
+  .apirow { display: flex; gap: 8px; flex-wrap: wrap; }
+  .apirow input { flex: 1; min-width: 220px; padding: 10px 12px; border-radius: 8px; border: 1px solid #2b3040; background: #13161d; color: #e8e8e8; font: 14px ui-monospace, Consolas, monospace; }
+  .abtn { padding: 9px 14px; border-radius: 8px; border: 0; background: #a78bfa; color: #160d2e; font-weight: 700; cursor: pointer; font-family: 'Rajdhani', 'Segoe UI', Arial, sans-serif; font-size: 1rem; }
+  .abtn.ghost { background: #20242f; color: #e8e8e8; border: 1px solid #2b3040; }
+  .apistatus { margin: 10px 0 0 !important; font-size: .9rem; }
+  .apistatus.ok { color: #55ff55 !important; } .apistatus.bad { color: #ff5555 !important; }
   footer { color: #9ca3af; font-size: .8rem; text-align: center; padding: 24px 16px 40px; border-top: 1px solid #2b3040; }
 </style>
 </head>
@@ -136,10 +144,51 @@
       <span class="go">Open shards →</span>
     </a>
   </div>
+
+  <h2 class="section-title" id="api" style="margin-top:44px">HYPIXEL API KEY</h2>
+  <div class="apibox">
+    <p>Paste your Hypixel API key (from the <a href="https://developer.hypixel.net/dashboard" target="_blank" rel="noopener">Hypixel developer dashboard</a>) so the tools can read your SkyBlock data.
+       It's saved in this browser only and is only ever sent to api.hypixel.net.</p>
+    <div class="apirow">
+      <input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" aria-label="Hypixel API key">
+      <button id="apiShow" class="abtn ghost" type="button">Show</button>
+      <button id="apiSave" class="abtn" type="button">Save &amp; test</button>
+      <button id="apiClear" class="abtn ghost" type="button">Remove</button>
+    </div>
+    <p id="apiStatus" class="apistatus"></p>
+  </div>
 </main>
 
 <footer>
   Not affiliated with Hypixel or Mojang.
 </footer>
+<script src="shared/sb.js?v=20261112g"></script>
+<script>
+(function () {
+  const input = document.getElementById('apiKey'), status = document.getElementById('apiStatus');
+  const say = (msg, cls) => { status.textContent = msg; status.className = 'apistatus ' + (cls || ''); };
+  input.value = U.apiKey();
+  if (input.value) say('A key is saved in this browser.', 'ok');
+  document.getElementById('apiShow').addEventListener('click', e => {
+    input.type = input.type === 'password' ? 'text' : 'password';
+    e.target.textContent = input.type === 'password' ? 'Show' : 'Hide';
+  });
+  document.getElementById('apiSave').addEventListener('click', async () => {
+    const k = input.value.trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(k)) { say("That doesn't look like a Hypixel API key.", 'bad'); return; }
+    say('Checking the key with Hypixel…');
+    try {
+      const j = await U.hypixel('/v2/counts', k);
+      U.setApiKey(k);
+      say(`Key works and is saved. ${U.num(j.playerCount)} players are online right now.`, 'ok');
+    } catch (err) {
+      if (err.status === 403) say('Hypixel rejected that key. It may be wrong or expired (development keys last 3 days).', 'bad');
+      else if (err.status === 429) { U.setApiKey(k); say('Saved, but Hypixel says the key is rate-limited right now. Try again in a minute.', 'bad'); }
+      else say('Could not reach Hypixel: ' + err.message, 'bad');
+    }
+  });
+  document.getElementById('apiClear').addEventListener('click', () => { U.setApiKey(''); input.value = ''; say('Key removed from this browser.'); });
+})();
+</script>
 </body>
 </html>
