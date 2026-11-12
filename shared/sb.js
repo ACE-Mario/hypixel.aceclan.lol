@@ -107,5 +107,65 @@ const U = (() => {
     return j;
   }
 
-  return { esc, num, MC, countdown, dur, when, named, mcText, plain, readLS, writeLS, pretty, roman, apiKey, hypixel };
+  /* ---------- login (Minecraft name + SkyBlock profile, saved in this browser) ---------- */
+  const LOGIN = 'ace-hypixel.login.v1', SKIP = 'ace-hypixel.skiplogin';
+  const login = () => readLS(LOGIN, null);
+  function setLogin(v) {
+    try { if (v) { localStorage.setItem(LOGIN, JSON.stringify(v)); localStorage.removeItem(SKIP); } else localStorage.removeItem(LOGIN); } catch { /* storage unavailable */ }
+  }
+  const skipped = () => { try { return !!localStorage.getItem(SKIP); } catch { return true; } };
+  const skipLogin = () => { try { localStorage.setItem(SKIP, '1'); } catch { /* storage unavailable */ } };
+  const avatar = (uuid, size = 32) => `https://crafthead.net/avatar/${encodeURIComponent(uuid)}/${size}`;
+  const MODES = { ironman: '♲ Ironman', island: '☀ Stranded', bingo: 'Ⓑ Bingo' };
+
+  /** Minecraft name -> { name, uuid } (uuid without dashes). Mojang's own API blocks browsers, so use mirrors. */
+  async function lookupPlayer(name) {
+    name = String(name).trim();
+    if (!/^[A-Za-z0-9_]{1,16}$/.test(name)) throw new Error("That isn't a valid Minecraft name.");
+    try {
+      const j = await fetch('https://playerdb.co/api/player/minecraft/' + encodeURIComponent(name)).then(r => r.json());
+      if (j.success && j.data && j.data.player) return { name: j.data.player.username, uuid: j.data.player.raw_id };
+      if (j.code === 'minecraft.invalid_username') throw Object.assign(new Error('notfound'), { nf: true });
+    } catch (e) { if (e.nf) throw new Error(`No Minecraft player is called "${name}".`); }
+    const r = await fetch('https://api.ashcon.app/mojang/v2/user/' + encodeURIComponent(name));
+    if (r.status === 404) throw new Error(`No Minecraft player is called "${name}".`);
+    if (!r.ok) throw new Error('Could not look up that name right now. Try again in a moment.');
+    const j = await r.json();
+    return { name: j.username, uuid: j.uuid.replace(/-/g, '') };
+  }
+  /** SkyBlock profiles the player is still a member of. */
+  async function skyblockProfiles(uuid) {
+    const j = await hypixel('/v2/skyblock/profiles?uuid=' + encodeURIComponent(uuid));
+    return (j.profiles || []).filter(p => {
+      const m = p.members && p.members[uuid];
+      return m && !(m.profile && m.profile.deletion_notice);
+    });
+  }
+
+  /** "Logged in as" chip in the top bar of every tool page. */
+  function userChip() {
+    const nav = document.querySelector('.sitebar nav, .nav nav');
+    if (!nav || nav.querySelector('.user-chip')) return;
+    const l = login();
+    const home = document.documentElement.hasAttribute('data-hub') ? './' : '../';
+    const a = document.createElement('a');
+    a.className = 'user-chip';
+    a.href = home + '?login';
+    if (l) {
+      a.title = 'Switch player or profile';
+      a.innerHTML = `<img src="${avatar(l.uuid, 24)}" alt="" width="20" height="20"><span>${esc(l.name)}</span><small>${esc(l.cuteName)}${l.mode ? ' ' + esc((MODES[l.mode] || '').split(' ')[0]) : ''}</small>`;
+    } else {
+      a.textContent = 'Log in';
+    }
+    nav.prepend(a);
+  }
+
+  // First visit to a tool page: send people to the login page, then bring them back.
+  if (!document.documentElement.hasAttribute('data-hub') && !login() && !skipped()) {
+    location.replace('../?next=' + encodeURIComponent(location.pathname + location.search));
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', userChip); else userChip();
+
+  return { esc, num, MC, countdown, dur, when, named, mcText, plain, readLS, writeLS, pretty, roman, apiKey, hypixel,
+    login, setLogin, skipped, skipLogin, avatar, MODES, lookupPlayer, skyblockProfiles, userChip };
 })();

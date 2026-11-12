@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-hub>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -76,6 +76,35 @@
 
   .apistatus { margin: 10px 0 0 !important; font-size: .9rem; }
   .apistatus.ok { color: #55ff55 !important; } .apistatus.bad { color: #ff5555 !important; }
+  .nav nav { display: flex; gap: 12px; align-items: center; }
+  .user-chip { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px; border-radius: 999px; background: #20242f; border: 1px solid #2b3040; color: #e8e8e8; text-decoration: none; font-weight: 600; letter-spacing: 0; text-transform: none; font-size: .9rem; }
+  .user-chip img { border-radius: 4px; image-rendering: pixelated; }
+  .user-chip small { color: #9ca3af; font-weight: 500; }
+  .user-chip:hover { border-color: #a78bfa; }
+  .login { padding: 40px 16px 60px; }
+  .login-card { max-width: 560px; margin: 0 auto; padding: 26px; border-radius: 14px; background: rgba(24, 28, 37, 0.92); border: 1px solid #2b3040; }
+  .login-card h2 { font-size: 1.8rem; letter-spacing: 2px; margin-bottom: 4px; }
+  .muted { color: #9ca3af; }
+  .login-row { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .login-row input { flex: 1; min-width: 180px; padding: 11px 14px; border-radius: 8px; border: 1px solid #2b3040; background: #13161d; color: #e8e8e8; font-size: 1rem; }
+  .login-row input:focus { outline: 2px solid #a78bfa; }
+  .abtn { padding: 10px 16px; border-radius: 8px; border: 0; background: #a78bfa; color: #160d2e; font-weight: 700; cursor: pointer; font-family: 'Rajdhani', 'Segoe UI', Arial, sans-serif; font-size: 1.05rem; }
+  .abtn:disabled { opacity: .6; cursor: wait; }
+  .profiles { display: grid; gap: 8px; margin-top: 8px; }
+  .profile { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px 14px; border-radius: 10px; background: #13161d; border: 1px solid #2b3040; color: #e8e8e8; cursor: pointer; font: inherit; }
+  .profile:hover, .profile:focus-visible { border-color: #a78bfa; outline: none; }
+  .profile.current { border-color: #3fbf7f; }
+  .profile img { border-radius: 6px; image-rendering: pixelated; }
+  .profile .pname { font-family: 'Rajdhani', 'Segoe UI', Arial, sans-serif; font-size: 1.3rem; font-weight: 700; }
+  .profile .pmeta { color: #9ca3af; font-size: .85rem; }
+  .profile .grow { flex: 1; min-width: 0; }
+  .badge { font-size: .75rem; padding: 2px 8px; border-radius: 999px; border: 1px solid #2b3040; color: #9ca3af; margin-left: 6px; vertical-align: middle; font-family: system-ui, sans-serif; font-weight: 600; }
+  .badge.ironman { color: #e8e8e8; border-color: #6b7280; }
+  .badge.island { color: #ffd166; border-color: #6b5a1f; }
+  .badge.bingo { color: #ff8fd0; border-color: #6b2a52; }
+  .badge.sel { color: #3fbf7f; border-color: #255a3c; }
+  .login-foot { display: flex; justify-content: space-between; margin-top: 18px; gap: 10px; flex-wrap: wrap; }
+  .linkbtn { background: none; border: 0; color: #a78bfa; cursor: pointer; font: inherit; font-size: .9rem; padding: 0; text-decoration: underline; }
   footer { color: #9ca3af; font-size: .8rem; text-align: center; padding: 24px 16px 40px; border-top: 1px solid #2b3040; }
 </style>
 </head>
@@ -84,15 +113,33 @@
   <div class="glow"></div>
   <div class="nav">
     <a class="ace" href="./">ACE<span>.</span> <small>HYPIXEL</small></a>
+    <nav></nav>
   </div>
   <div class="intro wrap">
     <div class="kicker"><span class="dot"></span>SkyBlock tools</div>
     <h1>ACE <em>HYPIXEL</em></h1>
-    <p>Free tools for SkyBlock, built for Ironman players. Everything runs in your browser, with no login or API key.</p>
+    <p>Free tools for SkyBlock, built for Ironman players. Log in with your Minecraft name to pick your profile. Everything runs in your browser.</p>
   </div>
 </header>
 
-<main class="wrap">
+<section id="loginView" class="wrap login" hidden>
+  <div class="login-card">
+    <h2>Log in</h2>
+    <p class="muted">Type your Minecraft name, then pick the SkyBlock profile you're playing. It's only saved in this browser.</p>
+    <form id="loginForm" class="login-row" autocomplete="off">
+      <input id="mcName" type="text" maxlength="16" spellcheck="false" placeholder="Minecraft username" aria-label="Minecraft username" required>
+      <button class="abtn" type="submit">Find profiles</button>
+    </form>
+    <p id="loginStatus" class="apistatus"></p>
+    <div id="profileList" class="profiles"></div>
+    <div class="login-foot">
+      <button id="skipLogin" class="linkbtn" type="button">Continue without logging in</button>
+      <button id="logout" class="linkbtn" type="button" hidden>Log out</button>
+    </div>
+  </div>
+</section>
+
+<main class="wrap" id="toolsView">
   <h2 class="section-title">TOOLS</h2>
   <div class="tools">
     <a class="tool" href="ironman/">
@@ -146,7 +193,7 @@
   Not affiliated with Hypixel or Mojang.
 </footer>
 <script src="config.js"></script>
-<script src="shared/sb.js?v=20261112h"></script>
+<script src="shared/sb.js?v=20261112i"></script>
 <script>
 // Quick check that the site's Hypixel API key (config.js) still works.
 (function () {
@@ -158,6 +205,77 @@
     el.textContent = err.status === 403 ? 'The Hypixel API key in config.js has expired or is wrong.' : 'Could not reach the Hypixel API right now.';
     el.className = 'apistatus bad';
   });
+})();
+</script>
+<script>
+// Login: Minecraft name -> pick a SkyBlock profile.
+(function () {
+  const $ = id => document.getElementById(id);
+  const qp = new URLSearchParams(location.search);
+  const next = qp.get('next');
+  // only ever go back to a page on this site
+  const safeNext = next && /^\/[A-Za-z0-9_\-\/.?=&%]*$/.test(next) && !next.startsWith('//') ? next : null;
+  const status = (msg, cls) => { $('loginStatus').textContent = msg; $('loginStatus').className = 'apistatus ' + (cls || ''); };
+  const refreshChip = () => { const c = document.querySelector('.user-chip'); if (c) c.remove(); U.userChip(); };
+  function show(on) {
+    $('loginView').hidden = !on;
+    $('toolsView').hidden = on;
+    if (!on) return;
+    const l = U.login();
+    $('logout').hidden = !l;
+    if (l && !$('mcName').value) { $('mcName').value = l.name; find(); } else $('mcName').focus();
+  }
+  function done() {
+    if (safeNext) { location.href = safeNext; return; }
+    history.replaceState(null, '', location.pathname);
+    refreshChip();
+    show(false);
+  }
+  let player = null;
+  async function find() {
+    const btn = document.querySelector('#loginForm button');
+    $('profileList').innerHTML = '';
+    btn.disabled = true;
+    status('Looking up ' + $('mcName').value.trim() + '…');
+    try {
+      player = await U.lookupPlayer($('mcName').value);
+      status('Loading SkyBlock profiles for ' + player.name + '…');
+      const profiles = await U.skyblockProfiles(player.uuid);
+      if (!profiles.length) { status(player.name + " hasn't played SkyBlock yet.", 'bad'); return; }
+      const cur = U.login();
+      profiles.sort((a, b) => (b.selected ? 1 : 0) - (a.selected ? 1 : 0));
+      $('profileList').innerHTML = profiles.map(p => {
+        const m = p.members[player.uuid] || {};
+        const lvl = m.leveling && m.leveling.experience ? Math.floor(m.leveling.experience / 100) : null;
+        const purse = m.currencies && m.currencies.coin_purse;
+        const coop = Object.keys(p.members).length;
+        const mode = p.game_mode || '';
+        const meta = [lvl !== null ? 'SkyBlock level ' + lvl : null, coop > 1 ? 'Co-op, ' + coop + ' players' : 'Solo',
+          purse ? U.num(Math.floor(purse)) + ' coins in purse' : null].filter(Boolean).join(' · ');
+        const isCur = cur && cur.uuid === player.uuid && cur.profileId === p.profile_id;
+        return `<button type="button" class="profile ${isCur ? 'current' : ''}" data-id="${U.esc(p.profile_id)}" data-name="${U.esc(p.cute_name)}" data-mode="${U.esc(mode)}">
+          <img src="${U.avatar(player.uuid, 40)}" alt="" width="40" height="40">
+          <span class="grow"><span class="pname">${U.esc(p.cute_name)}</span>${mode ? `<span class="badge ${U.esc(mode)}">${U.esc(U.MODES[mode] || mode)}</span>` : ''}${p.selected ? '<span class="badge sel">Last played</span>' : ''}
+          <div class="pmeta">${U.esc(meta)}</div></span><span aria-hidden="true">→</span></button>`;
+      }).join('');
+      status('Pick a profile:');
+    } catch (err) {
+      status(err.status === 403 ? "The site's Hypixel API key has expired. Try again later."
+        : err.status === 429 ? 'Too many lookups right now. Wait a minute and try again.' : err.message, 'bad');
+    } finally { btn.disabled = false; }
+  }
+  $('loginForm').addEventListener('submit', e => { e.preventDefault(); find(); });
+  $('profileList').addEventListener('click', e => {
+    const b = e.target.closest('.profile'); if (!b || !player) return;
+    U.setLogin({ name: player.name, uuid: player.uuid, profileId: b.dataset.id, cuteName: b.dataset.name, mode: b.dataset.mode || null, at: Date.now() });
+    done();
+  });
+  $('skipLogin').addEventListener('click', () => { U.skipLogin(); done(); });
+  $('logout').addEventListener('click', () => {
+    U.setLogin(null); $('mcName').value = ''; $('profileList').innerHTML = ''; status('Logged out.');
+    $('logout').hidden = true; refreshChip();
+  });
+  show(qp.has('login') || !!safeNext || (!U.login() && !U.skipped()));
 })();
 </script>
 </body>

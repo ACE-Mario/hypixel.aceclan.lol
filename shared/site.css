@@ -420,3 +420,11 @@ button.chip:hover { border-color: var(--muted); color: var(--text); }
 .mut-card .btn { margin-top: 8px; }
 #summary .stats { margin-top: 14px; }
 #summary .card { margin-bottom: 4px; }
+
+/* logged-in player chip in the top bar */
+.sitebar nav { align-items: center; }
+.user-chip { display: inline-flex !important; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border-radius: 999px; background: var(--card2); border: 1px solid var(--line); color: var(--text) !important; text-transform: none !important; letter-spacing: 0 !important; font-size: .85rem !important; }
+.user-chip img { border-radius: 3px; image-rendering: pixelated; }
+.user-chip small { color: var(--muted); font-weight: 500; }
+.user-chip:hover { border-color: var(--accent); }
+@media (max-width: 420px) { .user-chip small { display: none; } }
