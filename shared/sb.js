@@ -170,6 +170,12 @@ const U = (() => {
       return { at: c.t, garden: c.j.garden || {}, login: l };
     } catch (e) { if (e.status === 404) return { at: Date.now(), garden: {}, login: l }; throw e; }
   }
+  /** Museum donations for the logged-in profile: { at, museum (this member's entry, or {}), login }. */
+  async function myMuseum(force = false) {
+    const l = login(); if (!l) return null;
+    const c = await cachedApi('ace-hypixel.m.' + l.profileId, '/v2/skyblock/museum?profile=' + encodeURIComponent(l.profileId), force);
+    return { at: c.t, museum: (c.j.members || {})[l.uuid] || {}, login: l };
+  }
   const apiError = e => e.status === 403 ? "The site's Hypixel API key has expired, so profile data can't load right now."
     : e.status === 429 ? 'Too many requests to Hypixel right now. Try Refresh in a minute.' : (e.message || 'Could not load profile data.');
 
@@ -285,5 +291,5 @@ const U = (() => {
 
   return { esc, num, MC, countdown, dur, when, named, mcText, plain, readLS, writeLS, pretty, roman, apiKey, hypixel,
     login, setLogin, skipped, skipLogin, avatar, MODES, lookupPlayer, skyblockProfiles, userChip,
-    myProfile, myGarden, apiError, changed, profileBar, nbtItems };
+    myProfile, myGarden, myMuseum, apiError, changed, profileBar, nbtItems };
 })();

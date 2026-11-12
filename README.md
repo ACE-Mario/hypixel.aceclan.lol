@@ -16,6 +16,8 @@ ACE Clan's Hypixel SkyBlock tools. This is a separate site from the main clan si
 - `shards/`: Attribute Shards. Level tracker and fusion planner (cheapest time to each shard).
 - `talismans/`: Talisman Tracker. Magical Power, missing accessories (only the next tier in each upgrade
   line by default) and how to get each one. Reads the Accessory Bag when logged in.
+- `museum/`: Museum Tracker. Donations from the Museum API, XP per item, and each item's raw materials
+  priced live from the Bazaar so the cheapest donations are easy to find.
 - `config.js`: site settings, including the shared Hypixel API key every visitor uses. Development keys
   expire, so edit this file (on GitHub: Edit button) whenever the key changes.
 - `shared/`: the shared stylesheet (`site.css`) and helpers (`sb.js`: SkyBlock calendar, formatting).
@@ -31,6 +33,9 @@ ACE Clan's Hypixel SkyBlock tools. This is a separate site from the main clan si
 
 - `data/accessories.json`: every accessory (Hypixel items API) with upgrade lines and recipes (NEU).
   Refresh with `python scripts/extract_accessories.py` when new accessories come out.
+
+- `data/museum.json`: museum items, XP and armour sets (Hypixel items API) with recipes broken down to
+  raw materials (NEU). Refresh with `python scripts/extract_museum.py NotEnoughUpdates-REPO-master.zip`.
 
 It's a static site with no build step, hosted on GitHub Pages with the custom domain in `CNAME`.
 

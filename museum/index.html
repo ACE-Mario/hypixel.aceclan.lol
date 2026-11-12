@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Museum Tracker · ACE Hypixel</title>
+  <meta name="description" content="See which Hypixel SkyBlock museum items you haven't donated, how much Museum XP each is worth, and which are cheapest to make on Ironman.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/site.css?v=20261112n">
+</head>
+<body>
+  <div class="sitebar">
+    <div class="wrap sitebar-inner">
+      <a class="ace" href="../">ACE<span>.</span> <small>Hypixel</small></a>
+      <nav><a href="../">All tools</a></nav>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <h2>Museum Tracker</h2>
+        <p>See what you haven't donated, how much Museum XP each item is worth, and which ones are cheapest to make yourself.</p>
+      </div>
+      <div class="clock">
+        <div class="k">Museum XP</div>
+        <div class="v" id="xp">0</div>
+        <div class="hint" id="xpInfo"></div>
+      </div>
+    </div>
+
+    <div id="profileBar"></div>
+    <div id="cats" class="stats"></div>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="missing" class="tab">Not donated</button>
+      <button role="tab" data-tab="donated" class="tab">Donated</button>
+    </nav>
+
+    <section class="panel">
+      <div class="toolbar shard-filters">
+        <input id="q" type="search" placeholder="Search items or materials…" autocomplete="off">
+        <select id="fCat"><option value="">All categories</option></select>
+        <select id="fStage"><option value="">Any game stage</option></select>
+        <select id="fHow">
+          <option value="">Any way to get it</option><option value="make">Crafted or forged</option><option value="other">Dropped or other</option>
+        </select>
+        <select id="sort">
+          <option value="value">Most XP for the cost</option><option value="cheap">Cheapest first</option>
+          <option value="xp">Most XP first</option><option value="stage">Game stage</option><option value="name">A to Z</option>
+        </select>
+      </div>
+      <p class="hint" id="count"></p>
+      <div id="list"></div>
+      <p class="hint">Costs are the raw materials at live Bazaar prices, as a rough guide to how much grinding each item takes. Materials that aren't on the Bazaar (boss drops, fragments…) are listed instead of priced. Donating a higher tier also counts every lower tier.</p>
+    </section>
+  </main>
+
+  <footer class="wrap foot">Museum items and XP from the Hypixel API, recipes from the <a href="https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO" target="_blank" rel="noopener">NotEnoughUpdates repo</a>. Not affiliated with Hypixel or Mojang.</footer>
+  <script src="../config.js"></script>
+  <script src="../shared/sb.js?v=20261112n"></script>
+  <script src="app.js?v=20261112n"></script>
+</body>
+</html>

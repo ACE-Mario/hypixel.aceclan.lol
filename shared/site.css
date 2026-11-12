@@ -442,3 +442,9 @@ button.chip:hover { border-color: var(--muted); color: var(--text); }
 .gem-tiers { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding-left: 28px; font-size: .85rem; }
 .gem-tiers label { display: inline-flex; gap: 6px; align-items: center; }
 .gem-tiers input { width: 90px; }
+.mus-more { margin-top: 4px; font-size: .85rem; }
+.mus-more > summary { cursor: pointer; color: var(--muted); }
+.mus-pieces { display: grid; gap: 4px; margin: 6px 0; }
+.table.mini { margin: 6px 0; font-size: .85rem; }
+.table.mini td { padding: 3px 8px; }
+.stat .v small { font-size: 12px; font-weight: 500; }
