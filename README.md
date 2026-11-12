@@ -14,6 +14,8 @@ ACE Clan's Hypixel SkyBlock tools. This is a separate site from the main clan si
   mutation spots. The crop and mutation facts live in `greenhouse/data.js`, copied by hand from the
   wiki's Greenhouse and Mutations pages, so update that file when Hypixel changes mutations.
 - `shards/`: Attribute Shards. Level tracker and fusion planner (cheapest time to each shard).
+- `config.js`: site settings, including the shared Hypixel API key every visitor uses. Development keys
+  expire, so edit this file (on GitHub: Edit button) whenever the key changes.
 - `shared/`: the shared stylesheet (`site.css`) and helpers (`sb.js`: SkyBlock calendar, formatting).
 - `icons/`: item icons for the Ironman planner's picture tree, plus `index.json` listing them.
   Fetched from sky.coflnet.com with `python scripts/fetch_icons.py NotEnoughUpdates-REPO-master.zip`

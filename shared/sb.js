@@ -96,10 +96,9 @@ const U = (() => {
   const pretty = id => id.split(/[_;]/).map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
   const roman = n => ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV'][n] || String(n);
 
-  /** The visitor's own Hypixel API key, saved in this browser only (set on the home page). */
-  const API_KEY = 'ace-hypixel.apikey';
-  function apiKey() { try { return localStorage.getItem(API_KEY) || ''; } catch { return ''; } }
-  function setApiKey(k) { try { if (k) localStorage.setItem(API_KEY, k); else localStorage.removeItem(API_KEY); } catch { /* storage unavailable */ } }
+  /** The site-wide Hypixel API key from /config.js (edit that file to change it). */
+  const apiKey = () => (window.ACE_CONFIG && window.ACE_CONFIG.hypixelApiKey) || '';
+
   /** GET a Hypixel API path (e.g. '/v2/counts'), sending the saved key. Resolves to the JSON body. */
   async function hypixel(path, key = apiKey()) {
     const r = await fetch('https://api.hypixel.net' + path, { headers: key ? { 'API-Key': key } : {} });
@@ -108,5 +107,5 @@ const U = (() => {
     return j;
   }
 
-  return { esc, num, MC, countdown, dur, when, named, mcText, plain, readLS, writeLS, pretty, roman, apiKey, setApiKey, hypixel };
+  return { esc, num, MC, countdown, dur, when, named, mcText, plain, readLS, writeLS, pretty, roman, apiKey, hypixel };
 })();
