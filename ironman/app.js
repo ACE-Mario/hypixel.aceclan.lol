@@ -369,48 +369,58 @@ function stat(k, v, pct) {
   return `<div class="stat"><div class="k">${esc(k)}</div><div class="v">${v}</div>${bar}</div>`;
 }
 
-/* Gemstones: every tier is 80 of the one below (Perfect is 5 Flawless plus a crystal). */
-const GEM_TIERS = [['ROUGH', 1], ['FLAWED', 80], ['FINE', 6400], ['FLAWLESS', 512000], ['PERFECT', 2560000]];
-const gemOf = id => { const m = /^(ROUGH|FLAWED|FINE|FLAWLESS|PERFECT)_([A-Z]+)_GEM$/.exec(id); return m ? m[2] : null; };
-const gemId = (tier, g) => `${tier}_${g}_GEM`;
-function treeIds(n, out = new Set()) { if (n) { out.add(n.id); for (const c of n.children || []) treeIds(c, out); } return out; }
+function treeNodes(n, out = []) { if (n) { out.push(n); for (const c of n.children || []) treeNodes(c, out); } return out; }
 
-/** Under a Rough gemstone row: the higher tiers you hold, all counted as Rough. */
-function gemTiersRow(p, r) {
-  const { g, tiers, worth, above } = r.gem;
-  const inputs = tiers.map(([tier, mult]) => {
-    const id = gemId(tier, g);
-    return `<label title="Each one is ${num(mult)} Rough">${esc(pretty(tier))} <input type="number" min="0" value="${p.have[id] || ''}" placeholder="0" data-have="${esc(id)}" data-focus="raw:${esc(id)}" aria-label="Have ${esc(plainName(id))}"></label>`;
-  }).join('');
+/**
+ * Compacted forms of each raw material in this plan: items made from just one ingredient
+ * (Mithril -> Enchanted Mithril -> Refined Mithril, Rough -> Flawed -> Fine gemstones...).
+ * Returns raw id -> Map(form id -> how many raw one of it is worth), raw itself included.
+ */
+function compactForms(p) {
+  const full = compute({ ...p, have: {} });
+  const down = new Map(); // id -> [input id, raw per one]
+  for (const n of treeNodes(full.root)) {
+    const r = n.recipe;
+    if (!r || down.has(n.id) || !['craft', 'forge'].includes(r.type) || r.inputs.length !== 1) continue;
+    down.set(n.id, [r.inputs[0].id, r.inputs[0].count / (r.count || 1)]);
+  }
+  const forms = new Map();
+  for (const id of full.raw.keys()) if (id !== COIN) forms.set(id, new Map([[id, 1]]));
+  for (const start of down.keys()) {
+    let id = start, mult = 1;
+    const seen = new Set();
+    while (down.has(id) && !seen.has(id)) { seen.add(id); const [inp, k] = down.get(id); mult *= k; id = inp; }
+    if (forms.has(id)) forms.get(id).set(start, mult);
+  }
+  return forms;
+}
+
+/** Under a raw row: every compacted form you hold, all counted as the raw material. */
+function formsRow(p, r) {
+  const { list, worth } = r.forms;
+  const inputs = list.map(([id, mult]) => `<label title="Each one is ${num(mult)} ${esc(r.name)}">${esc(plainName(id))} <input type="number" min="0" value="${p.have[id] || ''}" placeholder="0" data-have="${esc(id)}" data-focus="raw:${esc(id)}" aria-label="Have ${esc(plainName(id))}"></label>`).join('');
   return `<tr class="gem-sub ${r.left === 0 ? 'done' : ''}"><td colspan="5"><div class="gem-tiers">
     <span class="muted">You have:</span> ${inputs}
-    <span class="muted">= <b>${num(worth)}</b> Rough in total${above ? ' (higher tiers than the recipe uses cannot be broken down, so they do not count)' : ''}</span>
+    <span class="muted">= <b>${num(worth)}</b> ${esc(r.name)} in total</span>
   </div></td></tr>`;
 }
 
 function renderRaw(p, res) {
-  // Same plan without any gemstones in hand, to get the full Rough amount each gemstone needs
-  const res0 = compute({ ...p, have: Object.fromEntries(Object.entries(p.have).filter(([id]) => !gemOf(id))) });
-  const ids0 = treeIds(res0.root);
-  const gems = new Map(); // gem -> { top: highest tier index the recipe uses }
-  for (const id of ids0) {
-    const g = gemOf(id); if (!g || !res0.raw.has(gemId('ROUGH', g))) continue;
-    const t = GEM_TIERS.findIndex(x => id.startsWith(x[0] + '_'));
-    gems.set(g, { top: Math.max(t, (gems.get(g) || { top: 0 }).top) });
-  }
-  const rows = [...res.raw].filter(([id]) => !gems.has(gemOf(id))).map(([id, q]) => {
+  const forms = new Map([...compactForms(p)].filter(([, m]) => m.size > 1));
+  // Same plan without any of those forms in hand, to get the full amount of each raw material
+  const formIds = new Set([...forms.values()].flatMap(m => [...m.keys()]));
+  const res0 = forms.size ? compute({ ...p, have: Object.fromEntries(Object.entries(p.have).filter(([id]) => !formIds.has(id))) }) : res;
+  const rows = [...res.raw].filter(([id]) => !forms.has(id)).map(([id, q]) => {
     const h = p.have[id] || 0;
     return { id, q, h, left: Math.max(0, q - h), name: plainName(id) };
   });
-  for (const [g, { top }] of gems) {
-    // Everything you hold up to the tier the recipe needs, counted as Rough
-    const tiers = GEM_TIERS.slice(0, top + 1);
-    const worth = tiers.reduce((t, [tier, mult]) => t + (p.have[gemId(tier, g)] || 0) * mult, 0);
-    const id = gemId('ROUGH', g);
-    const q = res0.raw.get(id);
+  for (const [id, m] of forms) {
+    const q = res0.raw.get(id) || 0;
+    if (!q) continue;
+    const list = [...m].sort((a, b) => a[1] - b[1]);
+    const worth = list.reduce((t, [f, mult]) => t + (p.have[f] || 0) * mult, 0);
     const left = Math.max(0, (res.raw.get(id) || 0) - (p.have[id] || 0));
-    const above = GEM_TIERS.slice(top + 1).some(([tier]) => p.have[gemId(tier, g)]);
-    rows.push({ id, q, h: Math.min(q, q - left), left, name: plainName(id), gem: { g, tiers, worth, above } });
+    rows.push({ id, q, h: q - left, left, name: plainName(id), forms: { list, worth } });
   }
   rows.sort((a, b) => (a.id === COIN ? -1 : b.id === COIN ? 1 : 0) || (a.left === 0) - (b.left === 0) || a.name.localeCompare(b.name));
   const shown = state.hideDone ? rows.filter(r => r.left > 0) : rows;
@@ -422,10 +432,10 @@ function renderRaw(p, res) {
     return `<tr class="${r.left === 0 ? 'done' : ''}">
       <td><div class="item-cell">${nameHTML(r.id)} ${wikiLink(r.id)} ${breakBtn}</div></td>
       <td class="num">${num(r.q)}</td>
-      <td class="num">${r.gem ? `<b title="Everything below, counted as Rough">${num(r.gem.worth)}</b>` : `<input type="number" min="0" value="${p.have[r.id] || ''}" placeholder="0" data-have="${esc(r.id)}" data-focus="raw:${esc(r.id)}" aria-label="Have ${esc(r.name)}">`}</td>
+      <td class="num">${r.forms ? `<b title="Everything below, counted as ${esc(r.name)}">${num(r.forms.worth)}</b>` : `<input type="number" min="0" value="${p.have[r.id] || ''}" placeholder="0" data-have="${esc(r.id)}" data-focus="raw:${esc(r.id)}" aria-label="Have ${esc(r.name)}">`}</td>
       <td class="num">${r.left ? num(r.left) : '✓'}</td>
       <td class="barcell"><div class="bar ${pct >= 100 ? 'full' : ''}"><span style="width:${pct}%"></span></div></td>
-    </tr>${r.gem ? gemTiersRow(p, r) : ''}`;
+    </tr>${r.forms ? formsRow(p, r) : ''}`;
   }).join('');
   $('#tab-raw').innerHTML = `
     <div class="toolbar">
