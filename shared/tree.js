@@ -161,7 +161,7 @@ const Tree = (() => {
    */
   async function page(cfg) {
     const $ = s => document.querySelector(s);
-    const t = makeTree(await fetch(cfg.data).then(r => r.json()));
+    const t = makeTree(await fetch(cfg.data, { cache: 'no-cache' }).then(r => r.json()));
     const { perks, ids } = t;
     const P = t.data.powders;
     const rows = t.data.rows;
@@ -186,30 +186,76 @@ const Tree = (() => {
       return { plan, up, refund };
     }
 
+    /** The Minecraft item a perk shows in game at a level (coal / emerald / diamond and so on). */
+    function itemOf(id, lv) {
+      const p = perks[id], ic = cfg.icons || {};
+      const it = p.item || '';
+      let name;
+      if (it.startsWith(':')) name = it.slice(1);
+      else if (it.startsWith('(npi')) name = (ic.npi || [])[lv === 0 ? 0 : lv >= p.max ? 2 : 1];
+      else if (it.startsWith('(api')) name = (ic.api || [])[lv === 0 ? 0 : 1];
+      else if (it) name = String(t.run(it, { level0: lv, maxLevel: p.max }) || '');
+      return (ic.map || {})[name] || name || 'BARRIER';
+    }
+    const slotImg = (item, off) => `<img src="../icons/${encodeURIComponent(item)}.png" alt="" loading="lazy"${off ? ' class="off"' : ''} onerror="this.style.visibility='hidden'">`;
+
+    /** Minecraft-style tooltip text for a perk. */
+    function tipHTML(id) {
+      const p = perks[id], c = s.cur[id], v = s.plan[id];
+      const bad = v > 0 && (t.disconnected(s.plan).has(id) || p.tier > s.tier);
+      const col = bad ? 'c' : v >= p.max ? 'a' : v > 0 ? 'e' : 'c';
+      const lines = [`§${col}${p.name}`];
+      if (p.max > 1) lines.push(`§7Level ${c === v ? v : `${c} → §f${v}`}§8/${p.max}`);
+      if (p.ability) lines.push(s.ability === id ? '§aSelected ability' : '§8Pickaxe ability');
+      const lore = loreHTML(t, id, Math.max(v, 1), s);
+      const cost = v > c ? `<br><br>${U.mcText('§7Cost: ')}${costLine(t.cost(id, c, v, s))}` : '';
+      const warn = p.tier > s.tier ? `<br>${U.mcText(`§cNeeds tier ${p.tier}`)}` : bad ? `<br>${U.mcText('§cNot connected')}` : '';
+      return `${lines.map(l => U.mcText(l)).join('<br>')}<br>${lore}${cost}${warn}`;
+    }
+
     function renderGrid() {
       const loose = t.disconnected(s.plan);
       const cells = [];
       for (let tier = rows; tier >= 1; tier--) {
-        cells.push(`<div class="ht-tier${tier > s.tier ? ' locked' : ''}">${tier}</div>`);
+        const open = tier <= s.tier;
+        cells.push(`<div class="mc-slot mc-tier${open ? ' open' : ''}" title="Tier ${tier}${open ? '' : ' (locked)'}">${slotImg(open ? cfg.icons.tierOn : cfg.icons.tierOff)}<span class="mc-n">${tier}</span></div>`);
         for (let x = 0; x < 7; x++) {
           const id = ids.find(i => perks[i].x === x && perks[i].tier === tier);
-          if (!id) { cells.push('<div class="ht-gap"></div>'); continue; }
+          if (!id) { cells.push('<div class="mc-slot empty"></div>'); continue; }
           const p = perks[id], c = s.cur[id], v = s.plan[id];
-          const cls = ['ht-node'];
-          if (v > 0) cls.push(v >= p.max ? 'max' : 'on');
+          const cls = ['mc-slot', 'perk'];
           if (v > c) cls.push('up'); else if (v < c) cls.push('down');
-          if (p.ability) cls.push('ability');
-          if (p.core) cls.push('core');
           if (v > 0 && (loose.has(id) || tier > s.tier)) cls.push('bad');
           if (s.sel === id) cls.push('sel');
-          if (p.ability && s.ability === id) cls.push('picked');
-          const lvl = p.max === 1 ? (v ? '✓' : '') : (v !== c ? `${c}→${v}` : v ? `${v}` : '');
-          cells.push(`<button type="button" class="${cls.join(' ')}" data-id="${id}" title="${U.esc(p.name)}">
-            <span class="nm">${U.esc(p.name)}</span><span class="lv">${lvl}</span></button>`);
+          if (p.ability && s.ability === id) cls.push('glint');
+          const n = p.max > 1 && v > 0 ? `<span class="mc-n">${v}</span>` : '';
+          const arrow = v > c ? '<span class="mc-chg up">▲</span>' : v < c ? '<span class="mc-chg down">▼</span>' : '';
+          cells.push(`<button type="button" class="${cls.join(' ')}" data-id="${id}" aria-label="${U.esc(p.name)}">${slotImg(itemOf(id, v), tier > s.tier)}${n}${arrow}</button>`);
         }
+        cells.push('<div class="mc-slot empty"></div>');
       }
-      $('#grid').innerHTML = cells.join('');
+      $('#grid').innerHTML = `<div class="mc-title">${U.esc(cfg.title || cfg.label)}</div><div class="mc-grid">${cells.join('')}</div>`;
     }
+
+    // Hover tooltip that follows the mouse, like in game.
+    const tip = document.createElement('div');
+    tip.className = 'mc-tip'; tip.hidden = true;
+    document.body.appendChild(tip);
+    const placeTip = e => {
+      const w = tip.offsetWidth, h = tip.offsetHeight;
+      let x = e.clientX + 14, y = e.clientY - 10;
+      if (x + w > innerWidth - 8) x = e.clientX - w - 14;
+      if (y + h > innerHeight - 8) y = innerHeight - h - 8;
+      tip.style.left = Math.max(8, x) + 'px'; tip.style.top = Math.max(8, y) + 'px';
+    };
+    $('#grid').addEventListener('mouseover', e => {
+      const b = e.target.closest('[data-id]');
+      if (!b || matchMedia('(hover: none)').matches) { tip.hidden = true; return; }
+      tip.innerHTML = tipHTML(b.dataset.id); tip.hidden = false; placeTip(e);
+    });
+    $('#grid').addEventListener('mousemove', e => { if (!tip.hidden) placeTip(e); });
+    $('#grid').addEventListener('mouseleave', () => { tip.hidden = true; });
+    Tree.tip = { el: tip, place: placeTip };
 
     function renderDetail() {
       const id = s.sel, p = perks[id];
@@ -241,6 +287,16 @@ const Tree = (() => {
         </div>`;
     }
 
+    // "You are missing X" / "You have X more than needed", per powder, against everything you own (spent + unspent).
+    function powderStatus(plan) {
+      if (!Object.keys(s.have).some(k => s.have[k])) return [];
+      return Object.keys(P).filter(k => plan[k] || s.have[k]).map(k => {
+        const d = (s.have[k] || 0) - (plan[k] || 0), name = P[k][1];
+        return d < 0 ? { k, bad: true, text: `You are missing ${U.num(-d)} ${name}` }
+          : { k, bad: false, text: d ? `You have ${U.num(d)} more ${name} than needed` : `You have exactly enough ${name}` };
+      });
+    }
+
     function renderStats() {
       const tot = totals();
       const coreLv = t.coreId ? s.plan[t.coreId] : 0;
@@ -255,7 +311,8 @@ const Tree = (() => {
         const over = haveAny && tot.plan[k] > have;
         cards.push(`<div class="stat"><div class="k">${U.esc(P[k][1])}</div>
           <div class="v ${over ? 'ht-over' : ''}">${U.num(tot.plan[k] || 0)}${haveAny ? ` <small>/ ${U.num(have)}</small>` : ''}</div>
-          <div class="hint" style="margin:4px 0 0">${tot.up[k] ? `${U.num(tot.up[k])} more than your tree now` : 'Nothing extra'}${tot.refund[k] ? ` · ${U.num(tot.refund[k])} freed up` : ''}</div></div>`);
+          <div class="hint" style="margin:4px 0 0">${tot.up[k] ? `${U.num(tot.up[k])} more than your tree now` : 'Nothing extra'}${tot.refund[k] ? ` · ${U.num(tot.refund[k])} freed up` : ''}</div>
+          ${haveAny ? (st => st ? `<div class="ht-pw ${st.bad ? 'bad' : 'ok'}">${U.esc(st.text)}</div>` : '')(powderStatus(tot.plan).find(x => x.k === k)) : ''}</div>`);
       }
       $('#stats').innerHTML = cards.join('');
       $('#tierNow').textContent = s.tier;
@@ -295,7 +352,8 @@ const Tree = (() => {
       $('#todo').innerHTML = `
         ${reset ? `<div class="ht-reset"><b>1. Refund all</b><span>Reset your tree in game. You get back every token${Object.keys(refund).length ? ` and ${costLine(refund)}` : ''}${t.coreId ? ` (${U.esc(perks[t.coreId].name)} stays)` : ''}.</span></div>` : ''}
         <div class="ht-reset ht-then"><b>${reset ? '2. Then level these' : 'Level these'}</b>
-          <span>Total: ${costLine(total)}. Go tier by tier so each perk is connected.</span></div>
+          <span>Total: ${costLine(total)}. Go tier by tier so each perk is connected.</span>
+          ${powderStatus(totals().plan).map(x => `<span class="ht-pw ${x.bad ? 'bad' : 'ok'}">${U.esc(x.text)}</span>`).join('')}</div>
         ${tiers.map(tr => `<div class="ht-tier-h">Tier ${tr}</div>
           <div class="ht-steps">${up.filter(id => perks[id].tier === tr).map(card).join('')}</div>`).join('')}
         ${s.ability && s.ability !== s.curAbility ? `<p class="hint">Then select <b>${U.esc(perks[s.ability].name)}</b> as your ability.</p>` : ''}`;
@@ -361,6 +419,7 @@ const Tree = (() => {
     $('#grid').addEventListener('click', e => {
       const b = e.target.closest('[data-id]'); if (!b) return;
       s.sel = b.dataset.id; render();
+      if (matchMedia('(max-width: 820px)').matches) $('#detail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
     $('#detail').addEventListener('click', e => {
       const b = e.target.closest('[data-step]'); if (!b) return;
@@ -416,5 +475,5 @@ const Tree = (() => {
     U.profileBar($('#profileBar'), { what: `your ${cfg.label}`, apply: applyProfile });
   }
 
-  return { page, makeTree };
+  return { page, makeTree, tip: null };
 })();

@@ -19,6 +19,8 @@ const Gear = (() => {
   const SPEED_PERKS = { mining_speed: 'all', speedy_mineman: 'all', professional: 'gem', strong_arm: 'metal', eager_adventurer: 'shaft' };
   const FORTUNE_PERKS = { mining_fortune: 'all', fortunate_mineman: 'all', gem_lover: 'gem', metal_head: 'metal', blockhead: 'block', rags_to_riches: 'shaft' };
   const FORTUNE_NAME = { gem: 'Gemstone Fortune', metal: 'Dwarven Metal Fortune', block: 'Block Fortune' };
+  const EMPTY = { helmet: 'IRON_HELMET', chest: 'IRON_CHESTPLATE', legs: 'IRON_LEGGINGS', boots: 'IRON_BOOTS' };
+  let open = null;    // slot whose item picker is showing
   const SLOTS = [
     ['tool', 'Pickaxe / drill', /\b(PICKAXE|DRILL|GAUNTLET)\b/], ['helmet', 'Helmet', /\bHELMET\b/],
     ['chest', 'Chestplate', /\bCHESTPLATE\b/], ['legs', 'Leggings', /\bLEGGINGS\b/], ['boots', 'Boots', /\bBOOTS\b/],
@@ -42,7 +44,7 @@ const Gear = (() => {
   let acc = null;     // accessory bag totals { speed, fortune, pristine, n }
   let skill = null;   // Mining skill level
   let pet = null;     // active pet { name, level, rarity, stats: {MINING_SPEED...}, other: [], ab: [] }
-  const petData = fetch('../data/pets.json').then(r => r.json()).catch(() => null);
+  const petData = fetch('../data/pets.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null);
   const PRISTINE_PERKS = { mining_master: 'gem' };
   // Sky Mall: one random buff each SkyBlock day (not on the API, so you pick today's).
   const MALL = [['', 'Not counted'], ['speed', '+100 Mining Speed'], ['fortune', '+50 Mining Fortune'], ['powder', '+15% Powder'],
@@ -138,7 +140,7 @@ const Gear = (() => {
         const key = String(it.ea.uuid || it.id);
         if (seen.has(key)) continue;
         seen.add(key);
-        owned[slot[0]].push({ key, drill: /\bDRILL\b/.test(last), name: U.plain(it.name || it.id).replace(/[-]/g, '').trim(), ...st });
+        owned[slot[0]].push({ key, id: it.id, lore: it.lore, rawName: it.name || it.id, drill: /\bDRILL\b/.test(last), name: U.plain(it.name || it.id).replace(/[-]/g, '').trim(), ...st });
       }
     }
   }
@@ -214,13 +216,30 @@ const Gear = (() => {
     const need = better ? Math.ceil(speedFor(better, b.str)) : null;
     const keep = tk === Infinity ? 0 : Math.ceil(speedFor(tk, b.str));
     const opt = (v, l, sel) => `<option value="${U.esc(v)}" ${v === sel ? 'selected' : ''}>${U.esc(l)}</option>`;
-    const slotRows = SLOTS.map(([k, label]) => {
+    const img = id => `<img src="../icons/${encodeURIComponent(id)}.png" alt="" loading="lazy" onerror="this.src='../icons/BARRIER.png'">`;
+    const slot = k => {
       const list = (owned && owned[k]) || [];
-      if (!list.length) return '';
       const cur = chosen(k, b);
-      return `<label class="field">${label}<select data-slot="${k}">${list.map(x => opt(x.key,
-        `${x.name} (${x.speed ? U.num(x.speed) + ' speed, ' : ''}${U.num(fortuneFor(x, b))} fortune)`, cur && cur.key)).join('')}</select></label>`;
-    }).join('');
+      const label = SLOTS.find(x => x[0] === k)[1];
+      return `<button type="button" class="mc-slot${cur ? '' : ' none'}${open === k ? ' sel' : ''}" data-gslot="${k}" ${cur ? `data-gi="${U.esc(k)}|${U.esc(cur.key)}"` : `title="${U.esc(label)}: nothing found"`} ${list.length ? '' : 'disabled'}>
+        ${cur ? img(cur.id) : EMPTY[k] ? img(EMPTY[k]) : ''}${list.length > 1 ? `<span class="mc-n">${list.length}</span>` : ''}</button>`;
+    };
+    const picker = () => {
+      if (!open || !owned || !owned[open] || !owned[open].length) return '';
+      const cur = chosen(open, b), auto = !g.pick[open];
+      return `<div class="mc-pick"><div class="mc-title">Pick your ${U.esc(SLOTS.find(x => x[0] === open)[1].toLowerCase())}</div>
+        <div class="mc-grid">${owned[open].map(x => `<button type="button" class="mc-slot${cur && x.key === cur.key ? ' cur' : ''}" data-gchoose="${U.esc(x.key)}" data-gi="${U.esc(open)}|${U.esc(x.key)}">${img(x.id)}</button>`).join('')}
+        <button type="button" class="mc-slot${auto ? ' cur' : ''}" data-gchoose="" title="Pick the best one for me">${img('NETHER_STAR')}<span class="mc-n">A</span></button></div>
+        <p class="mc-gear-lbl">Hover for stats. The star picks the best one automatically${auto ? ' (on now)' : ''}.</p></div>`;
+    };
+    const slotRows = owned && SLOTS.some(([k]) => owned[k].length) ? `<div class="ht-grid mc-gearbox">
+      <div class="mc-title">Your mining gear</div>
+      <div class="mc-gear">
+        <div><div class="grp col">${['helmet', 'chest', 'legs', 'boots'].map(slot).join('')}</div><div class="mc-gear-lbl">Armour</div></div>
+        <div><div class="grp col">${['necklace', 'cloak', 'belt', 'gloves'].map(slot).join('')}</div><div class="mc-gear-lbl">Equipment</div></div>
+        <div><div class="grp col">${slot('tool')}</div><div class="mc-gear-lbl">Tool</div></div>
+        <div class="mc-gear-sum">${SLOTS.map(([k, label]) => { const c = chosen(k, b); return c ? `<div><span class="mc-gear-lbl">${U.esc(label)}</span> ${U.mcText(c.rawName)}</div>` : ''; }).join('')}</div>
+      </div>${picker()}</div>` : '';
     const fortName = FORTUNE_NAME[b.kind] ? `Mining + ${FORTUNE_NAME[b.kind]}` : 'Mining Fortune';
     const LABEL = { gear: 'gear', acc: 'accessories', skill: `Mining ${skill}`, pet: pet ? `${pet.name} pet` : 'pet', mall: 'Sky Mall', god: 'God Potion', other: 'other' };
     const pMaster = api.stat('mining_master', plan.mining_master || 0);
@@ -238,7 +257,7 @@ const Gear = (() => {
         <label class="field">Today's Sky Mall <select id="gMall" ${g.noMall ? 'disabled' : ''}>${MALL.map(([v, l]) => opt(v, l, g.mall)).join('')}</select></label>
         <label><input type="checkbox" id="gGod" ${g.god ? 'checked' : ''}> God Potion (+${GOD_POT.speed} speed, +${GOD_POT.fortune} fortune)</label>
       </div>
-      ${owned ? (slotRows ? `<div class="controls ht-gear">${slotRows}</div>`
+      ${owned ? (slotRows ? slotRows
         : '<p class="hint">No mining gear found on your profile. Turn on the Inventory API in SkyBlock settings, or type your stats under "Other".</p>')
         : '<p class="hint">Log in to read your armour, equipment and pickaxe or drill, or type your total stats under "Other".</p>'}
       <div class="stats">
@@ -314,7 +333,31 @@ const Gear = (() => {
     save();
     if (api) render(api);
   });
+  const gearItem = key => {
+    const [slot, k] = key.split('|');
+    return ((owned && owned[slot]) || []).find(x => x.key === k);
+  };
+  document.addEventListener('mouseover', e => {
+    const el = e.target.closest && e.target.closest('#gear [data-gi]');
+    const tip = Tree.tip;
+    if (!tip) return;
+    if (!el || matchMedia('(hover: none)').matches) { if (e.target.closest && e.target.closest('#gear')) tip.el.hidden = true; return; }
+    const x = gearItem(el.dataset.gi);
+    if (!x) return;
+    tip.el.innerHTML = [U.mcText(x.rawName), ...x.lore.map(l => U.mcText(l) || '&nbsp;')].join('<br>');
+    tip.el.hidden = false; tip.place(e);
+  });
+  document.addEventListener('mousemove', e => { if (Tree.tip && !Tree.tip.el.hidden && e.target.closest && e.target.closest('#gear [data-gi]')) Tree.tip.place(e); });
   document.addEventListener('click', e => {
+    const sl = e.target.closest && e.target.closest('#gear [data-gslot]');
+    const ch = e.target.closest && e.target.closest('#gear [data-gchoose]');
+    if (sl || ch) {
+      if (Tree.tip) Tree.tip.el.hidden = true;
+      if (sl) open = open === sl.dataset.gslot ? null : sl.dataset.gslot;
+      if (ch) { if (ch.dataset.gchoose) g.pick[open] = ch.dataset.gchoose; else delete g.pick[open]; save(); }
+      if (api) render(api);
+      return;
+    }
     if (e.target.id !== 'gTune' || !api) return;
     const msg = tune();
     $('#gMsg').innerHTML = `<p class="hint">${msg}</p>`;

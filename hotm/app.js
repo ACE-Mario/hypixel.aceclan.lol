@@ -65,6 +65,8 @@ const powderOf = m => {
 
 Tree.page({
   data: '../data/hotm.json', storeKey: 'ace-hypixel.hotm.v1', node: 'mining', label: 'HotM',
+  icons: { npi: ['COAL', 'EMERALD', 'DIAMOND'], api: ['COAL_BLOCK', 'EMERALD_BLOCK'], tierOn: 'EMERALD_BLOCK', tierOff: 'COAL_BLOCK' },
+  title: 'Heart of the Mountain',
   presets: PRESETS, powderOf,
   onRender: api => Gear.render(api),
   onProfile: d => Gear.load(d),

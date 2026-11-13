@@ -75,7 +75,7 @@ def main(zpath):
                 cost = cost or '0'
             out = {
                 'name': p['name'], 'x': p['x'], 'tier': cfg['rows'] - p['y'], 'max': p['maxLevel'],
-                'powder': p.get('powder', ''), 'cost': cost, 'lore': p.get('lore', []),
+                'powder': p.get('powder', ''), 'cost': cost, 'lore': p.get('lore', []), 'item': p.get('item', ''),
             }
             stats = {k: v for k, v in p.items() if k.startswith('stat')}
             if stats:
