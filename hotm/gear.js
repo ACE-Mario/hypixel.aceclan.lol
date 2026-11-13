@@ -57,7 +57,11 @@ const Gear = (() => {
   };
   const save = () => U.writeLS(KEY, g);
   const blockOf = () => BLOCKS.find(b => b.id === g.block) || BLOCKS[0];
-  const applies = (where, b) => where === 'all' || where === b.kind || (where === 'shaft' && g.shaft);
+  // Per piece. Mining Spread "on Ores" counts on pure blocks too.
+  const MINERAL = { MINERAL: { block: 25, spread: 100 }, GLOSSY_MINERAL: { block: 50, spread: 150 } };
+  // Perks that give Mining Spread, and where.
+  const SPREAD_PERKS = { efficient_miner: 'all', mole: 'hardstone' };
+  const applies = (where, b) => where === 'all' || where === b.kind || where === b.id || (where === 'shaft' && g.shaft);
   const $ = s => document.querySelector(s);
 
   /** Mining stats from an item's lore. Efficiency isn't counted in the lore, so it's added from the enchant. */
@@ -65,13 +69,17 @@ const Gear = (() => {
     const lines = it.lore.map(U.plain);
     const num = re => { for (const l of lines) { const m = l.match(re); if (m) return +m[1].replace(/,/g, ''); } return 0; };
     const eff = ((it.ea.enchantments || {}).efficiency) || 0;
+    // Mineral armour's Block Fortune and spread live in its ability text, and Museum copies have no lore for them.
+    const set = (it.id.match(/^(GLOSSY_MINERAL|MINERAL)_(HELMET|CHESTPLATE|LEGGINGS|BOOTS)$/) || [])[1];
+    const fixed = MINERAL[set] || { block: 0, spread: 0 };
     return {
       speed: num(/^Mining Speed: \+([\d,.]+)/) + (eff ? 10 + 20 * (eff - 1) : 0),
       fortune: {
         all: num(/^Mining Fortune: \+([\d,.]+)/), gem: num(/^Gemstone Fortune: \+([\d,.]+)/),
-        metal: num(/^Dwarven Metal Fortune: \+([\d,.]+)/), block: num(/^Block Fortune: \+([\d,.]+)/),
+        metal: num(/^Dwarven Metal Fortune: \+([\d,.]+)/), block: num(/^Block Fortune: \+([\d,.]+)/) || fixed.block,
       },
       pristine: num(/^Pristine: \+([\d,.]+)/),
+      spread: (num(/^Mining Spread: \+([\d,.]+)/) || num(/Grants \+([\d,.]+) Mining Spread on Ores/) || fixed.spread),
     };
   }
 
@@ -118,13 +126,13 @@ const Gear = (() => {
     const bag = (inv.bag_contents || {}).talisman_bag;
     acc = null;
     if (bag && bag.data) {
-      acc = { speed: 0, fortune: { all: 0, gem: 0, metal: 0, block: 0 }, pristine: 0, n: 0 };
+      acc = { speed: 0, fortune: { all: 0, gem: 0, metal: 0, block: 0 }, pristine: 0, spread: 0, n: 0 };
       let list = [];
       try { list = await U.nbtItems(bag.data); } catch (e) { console.error(e); }
       for (const it of list) {
         const st = itemStats(it);
         if (!st.speed && !st.fortune.all && !st.fortune.gem && !st.fortune.metal && !st.fortune.block && !st.pristine) continue;
-        acc.n++; acc.speed += st.speed; acc.pristine += st.pristine;
+        acc.n++; acc.speed += st.speed; acc.pristine += st.pristine; acc.spread += st.spread;
         for (const k of Object.keys(acc.fortune)) acc.fortune[k] += st.fortune[k];
       }
     }
@@ -204,17 +212,22 @@ const Gear = (() => {
     if (pick) return pick;
     const score = slot === 'pet'
       ? x => { const t = list === owned.pet ? chosen('tool', b) : null; const r = petParts(x.pet, b, t); return r.fortune * 10 + r.speed + r.pristine * 100; }
-      : x => (slot === 'tool' ? x.speed * 10 + fortuneFor(x, b) : fortuneFor(x, b) * 10 + x.speed);
+      : x => {
+        // Each 100 spread is roughly one extra block per break, so on blocks it beats the same amount of fortune by a lot.
+        const sp = b.kind === 'block' ? x.spread * 10 : 0;
+        return slot === 'tool' ? x.speed * 10 + fortuneFor(x, b) + sp : (fortuneFor(x, b) + sp) * 10 + x.speed;
+      };
     return list.slice().sort((a, c) => score(c) - score(a))[0];
   }
   function gearTotals(b) {
-    let speed = 0, fortune = 0, pristine = 0;
+    let speed = 0, fortune = 0, pristine = 0, spread = 0;
     let gearPristine = 0;
     for (const [slot] of SLOTS) {
       if (slot === 'pet') continue;
       const x = chosen(slot, b);
-      if (x) { speed += x.speed; fortune += fortuneFor(x, b); pristine += x.pristine; gearPristine += x.pristine; }
+      if (x) { speed += x.speed; fortune += fortuneFor(x, b); pristine += x.pristine; gearPristine += x.pristine; spread += x.spread; }
     }
+    const spreadParts = { gear: spread, acc: acc ? acc.spread : 0 };
     const parts = { gear: { speed, fortune } };
     if (acc) { parts.acc = { speed: acc.speed, fortune: fortuneFor(acc, b) }; pristine += acc.pristine; }
     if (skill) parts.skill = { speed: 0, fortune: skill * SKILL_FORTUNE };
@@ -232,18 +245,20 @@ const Gear = (() => {
     const sum = k => Object.values(parts).reduce((n, x) => n + x[k], 0);
     const pristineParts = { gear: gearPristine, acc: acc ? acc.pristine : 0 };
     pristineParts.pet = Math.round((pristine - pristineParts.gear - pristineParts.acc) * 100) / 100;
-    return { speed: sum('speed'), fortune: sum('fortune'), pristine, pristineParts, parts };
+    return { speed: sum('speed'), fortune: sum('fortune'), pristine, pristineParts, parts, spreadParts };
   }
   const perkSum = (perks, b, levels) => Object.entries(perks).reduce((n, [id, where]) => n + (applies(where, b) ? api.stat(id, levels[id] || 0) : 0), 0);
 
-  /** Ticks to break a block: ceil(30 × strength / speed), at least 4 unless it breaks in 1 tick (instantly). */
-  function ticks(speed, str) {
+  /** Ticks to break a block: ceil(30 × strength / speed), at least 4 unless it breaks instantly. Plain blocks like
+      Hard Stone break instantly at 30 × strength; ores, gemstones, Dwarven metals and pure blocks need more than 60 ×. */
+  const instantAt = b => (b.id === 'hardstone' ? 30 * b.str : 60 * b.str + 1);
+  function ticks(speed, b) {
     if (speed <= 0) return Infinity;
-    const t = Math.ceil(30 * str / speed);
-    return t <= 1 ? 1 : Math.max(4, t);
+    if (speed >= instantAt(b)) return 1;
+    return Math.max(4, Math.ceil(30 * b.str / speed));
   }
   /** Least speed that breaks the block in `t` ticks. */
-  const speedFor = (t, str) => (t === 1 ? 30 * str : 30 * str / t);
+  const speedFor = (t, b) => (t === 1 ? instantAt(b) : 30 * b.str / t);
 
   function render(a) {
     api = a;
@@ -254,10 +269,10 @@ const Gear = (() => {
     const tot = gearTotals(b);
     const pSpeed = perkSum(SPEED_PERKS, b, plan), pFort = perkSum(FORTUNE_PERKS, b, plan);
     const total = tot.speed + pSpeed;
-    const tk = ticks(total, b.str);
+    const tk = ticks(total, b);
     const better = tk === 4 ? 1 : tk > 4 && tk !== Infinity ? tk - 1 : null;
-    const need = better ? Math.ceil(speedFor(better, b.str)) : null;
-    const keep = tk === Infinity ? 0 : Math.ceil(speedFor(tk, b.str));
+    const need = better ? Math.ceil(speedFor(better, b)) : null;
+    const keep = tk === Infinity ? 0 : Math.ceil(speedFor(tk, b));
     const opt = (v, l, sel) => `<option value="${U.esc(v)}" ${v === sel ? 'selected' : ''}>${U.esc(l)}</option>`;
     const img = id => `<img src="../icons/${encodeURIComponent(id)}.png" alt="" loading="lazy" onerror="this.src='../icons/BARRIER.png'">`;
     const slot = k => {
@@ -313,13 +328,20 @@ const Gear = (() => {
           tk === Infinity ? 'Add your speed first' : better ? `${better === 1 ? 'Instant' : better + ' ticks'} at ${U.num(need)} speed (${U.num(need - total)} more)` : 'As fast as it gets')}
         ${stat(fortName, U.num(tot.fortune + pFort), `${from('fortune')} + ${U.num(pFort)} from this plan`)}
         ${b.kind === 'gem' || tot.pristine ? stat('Pristine', U.num(tot.pristine + pMaster), priParts) : ''}
+        ${b.kind === 'block' ? (() => {
+          const pSpread = perkSum(SPREAD_PERKS, b, plan);
+          const parts = [...Object.entries(tot.spreadParts).filter(([, v]) => v).map(([k, v]) => `${U.num(v)} ${LABEL[k]}`), `${U.num(pSpread)} from this plan`];
+          return stat('Mining Spread', U.num(tot.spreadParts.gear + tot.spreadParts.acc + pSpread), parts.join(' + '));
+        })() : ''}
       </div>
       ${tk !== Infinity && tk > 1 ? `<p class="hint">Any speed between ${U.num(keep)} and ${U.num(need)} breaks ${U.esc(b.name)} in the same ${tk} ticks, so powder spent on speed in that gap is wasted.</p>` : ''}
       ${pet && !petNow ? `<p class="hint">Active pet: <b>${U.esc(pet.name)}</b> (${U.esc(U.pretty(pet.rarity || ''))}${pet.level ? `, level ${pet.level}` : ''})${pet.held ? `, holding ${U.esc(HELD[pet.held] ? HELD[pet.held].name : U.pretty(pet.held.replace(/^PET_ITEM_/, '')))}` : ''}${!['MINING_SPEED', 'MINING_FORTUNE', 'PRISTINE', 'GEMSTONE_FORTUNE'].some(k => pet.stats[k]) && !pet.ab.some(x => x.stat !== 'forfortune') && !HELD[pet.held] ? '. Neither it nor its item has mining stats, so it adds nothing here.' : ''}${pet.ab.some(a => a.when === 'magma') ? '. Its Pristine bonus only works in the Magma Fields, so it isn\'t counted.' : ''}</p>` : ''}
       ${owned && !acc ? '<p class="hint">Your accessory bag is not on the API. Turn on the Inventory API to count it.</p>' : ''}
       <p class="hint">"Other" is for anything else, like a temporary buff. Power stones don't give mining stats, and Sky Mall changes daily and isn't on the API.
-        Pure blocks (Gold Blocks in the Mines of Divan, Diamond Blocks under the Royal Mines) use Block Fortune.
-        Break time is ⌈30 × block strength ÷ speed⌉ ticks, with a 4-tick minimum unless the block breaks instantly.</p>
+        Pure blocks (Gold Blocks in the Mines of Divan, Diamond Blocks under the Royal Mines) use Block Fortune, and Mining Spread
+        breaks extra blocks around them (Mineral Armor gives +100 a piece, Glossy Mineral +150).
+        Break time is ⌈30 × block strength ÷ speed⌉ ticks with a 4-tick minimum. Hard Stone breaks instantly at 30 × its strength;
+        ores, gemstones, Dwarven metals and pure blocks need more than 60 ×.</p>
       <div class="controls"><button type="button" class="btn" id="gTune">Tune this plan for ${U.esc(b.name)}</button></div>
       <div id="gMsg"></div>`;
   }
@@ -333,9 +355,9 @@ const Gear = (() => {
     const tot = gearTotals(b);
     const speedIds = Object.keys(SPEED_PERKS).filter(id => applies(SPEED_PERKS[id], b) && plan[id] > 0 && t.perks[id].tier <= s.tier);
     for (const id of speedIds) plan[id] = t.perks[id].max;
-    const best = ticks(tot.speed + perkSum(SPEED_PERKS, b, plan), b.str);
+    const best = ticks(tot.speed + perkSum(SPEED_PERKS, b, plan), b);
     if (best === Infinity) return 'Add your Mining Speed first: log in, or type it under "Other".';
-    const need = speedFor(best, b.str);
+    const need = speedFor(best, b);
     // Keep dropping the level with the most powder per point of speed while the break time stays the same.
     for (;;) {
       let pick = null, ratio = 0;

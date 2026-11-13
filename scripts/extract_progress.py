@@ -23,6 +23,7 @@ SKILLS = [
                              'GEMSTONE_GAUNTLET', 'GEMSTONE_DRILL_3', 'TITANIUM_DRILL_3', 'GEMSTONE_DRILL_4', 'TITANIUM_DRILL_4',
                              'DIVAN_DRILL']),
         ('Armour', ['SET:MINER_OUTFIT', 'SET:GOBLIN', 'SET:GLACITE', 'SET:ARMOR_OF_YOG', 'SET:SORROW', 'SET:DIVAN']),
+        ('Block mining armour', ['SET:MINERAL', 'SET:GLOSSY_MINERAL']),
         ('Necklace', 'AUTO:NECKLACE'),
         ('Cloak', 'AUTO:CLOAK'),
         ('Belt', 'AUTO:BELT'),
