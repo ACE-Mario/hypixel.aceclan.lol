@@ -67,6 +67,22 @@ SKILLS = [
         ('Gloves', 'AUTO:GLOVES'),
         ('Pet', ['PET:DOLPHIN', 'PET:SQUID', 'PET:FLYING_FISH']),
     ]},
+    # Combat: no single guide covers it, so this follows the usual path (collections and Rosetta-era gear,
+    # then dragon armour from the End, slayer gear, dungeons, then Crimson Isle / Kuudra).
+    {'id': 'combat', 'name': 'Combat', 'skill': 'COMBAT', 'icon': 'DIAMOND_SWORD', 'tracks': [
+        ('Sword', ['UNDEAD_SWORD', 'RAIDER_AXE', 'ZOMBIE_SWORD', 'ASPECT_OF_THE_END', 'REVENANT_SWORD', 'VOIDEDGE_KATANA',
+                   'REAPER_SWORD', 'PIGMAN_SWORD', 'LIVID_DAGGER', 'VORPAL_KATANA', 'SHADOW_FURY', 'ATOMSPLIT_KATANA',
+                   'GIANTS_SWORD', 'HYPERION']),
+        ('Bow', ['ARTISANAL_SHORTBOW', 'HURRICANE_BOW', 'END_STONE_BOW', 'RUNAANS_BOW', 'ITEM_SPIRIT_BOW', 'JUJU_SHORTBOW',
+                 'MOSQUITO_BOW', 'TERMINATOR']),
+        ('Armour', ['SET:GOLEM_ARMOR', 'SET:HARDENED_DIAMOND', 'SET:TARANTULA', 'SET:STRONG_DRAGON', 'SET:FINAL_DESTINATION',
+                    'SET:SUPERIOR_DRAGON', 'SET:SHADOW_ASSASSIN', 'SET:CRIMSON', 'SET:POWER_WITHER']),
+        ('Necklace', 'AUTO:NECKLACE'),
+        ('Cloak', 'AUTO:CLOAK'),
+        ('Belt', 'AUTO:BELT'),
+        ('Gloves', 'AUTO:GLOVES'),
+        ('Pet', ['PET:WOLF', 'PET:BLAZE', 'PET:TIGER', 'PET:ENDER_DRAGON']),
+    ]},
 ]
 # Equipment ladders are built from every item with the skill's stats, worst to best by this score.
 SCORE = {
@@ -74,6 +90,7 @@ SCORE = {
     'foraging': {'Foraging Fortune': 1, 'Sweep': 3},
     'farming': {'Farming Fortune': 1},
     'fishing': {'Sea Creature Chance': 5, 'Fishing Speed': 1},
+    'combat': {'Strength': 1, 'Crit Damage': 1, 'Health': 0.2, 'Defense': 0.2},
 }
 SOURCES = [
     ['SkyKings Ironman guide', 'https://skykings.net/guides/ironman'],
@@ -118,10 +135,22 @@ def main(zpath):
             m = re.search(r'Requires Heart of the Forest Tier (\d+)', l)
             if m:
                 req.append({'hotf': int(m.group(1))})
-        m = re.match(r'Requires: (.+) ([IVX]+)$', j.get('crafttext', '') or '')
+            m = re.search(r'Requires (Zombie|Spider|Wolf|Enderman|Blaze|Vampire) Slayer (\d+)', l)
+            if m:
+                req.append({'slayer': m.group(1).lower(), 'lv': int(m.group(2))})
+            m = re.search(r'Requires The Catacombs Floor ([IVX]+) Completion', l)
+            if m:
+                req.append({'floor': ROMAN[m.group(1)]})
+            m = re.search(r'Requires Kuudra (\w+) Tier Completion', l)
+            if m:
+                req.append({'text': f'Kuudra {m.group(1)} tier'})
+        ms = re.match(r'Requires: (Zombie|Spider|Wolf|Enderman|Blaze|Vampire) Slayer (\d+)$', j.get('crafttext', '') or '')
+        if ms:
+            req = [q for q in req if q.get('slayer') != ms.group(1).lower()] + [{'slayer': ms.group(1).lower(), 'lv': int(ms.group(2))}]
+        m = None if ms else re.match(r'Requires: (.+) ([IVX]+)$', j.get('crafttext', '') or '')
         if m and m.group(1).lower() in by_name:
             req.append({'coll': by_name[m.group(1).lower()], 'name': m.group(1), 'tier': ROMAN[m.group(2)]})
-        elif j.get('crafttext', '').startswith('Requires: ') and not re.match(r'Requires: (HotM|HotF) ', j['crafttext']):
+        elif not ms and j.get('crafttext', '').startswith('Requires: ') and not re.match(r'Requires: (HotM|HotF) ', j['crafttext']):
             req.append({'text': j['crafttext'][10:]})
         how = []
         for r in j.get('recipes', []) + ([dict(j['recipe'], type='crafting')] if 'recipe' in j else []):
@@ -144,7 +173,7 @@ def main(zpath):
         found = []
         for k, j in items.items():
             lore = [plain(l) for l in j.get('lore', [])]
-            if ';' in k or not lore:
+            if ';' in k or not lore or k.startswith('STARRED_') or plain(j.get('displayname', '')).startswith(' '):
                 continue
             m = re.search(r'\b(NECKLACE|CLOAK|BELT|GLOVES|BRACELET)\b', lore[-1])
             if not m or {'BRACELET': 'GLOVES'}.get(m.group(1), m.group(1)) != slot:
@@ -155,6 +184,8 @@ def main(zpath):
                     mm = re.match(re.escape(stat) + r': \+([\d.]+)', l)
                     if mm:
                         score += float(mm.group(1)) * w
+            if skill == 'combat' and not any(re.match(r'(Strength|Crit Damage): \+', l) for l in lore):
+                continue   # health/defense alone (fishing, farming pieces) isn't combat gear
             if score:
                 found.append((score, k))
         return [k for _, k in sorted(found)]
@@ -199,6 +230,8 @@ def main(zpath):
 
 def set_name(helmet_name):
     """'Helmet of Divan' -> 'Armor of Divan', 'Cropie Helmet' -> 'Cropie Armor'."""
+    if re.search(r'\bArmor\b', helmet_name):
+        return re.sub(r' (Helmet|Hat|Hood|Mask|Cap)$', '', helmet_name)
     n = re.sub(r'^(Helmet|Hat|Hood|Mask|Cap) of ', 'Armor of ', helmet_name)
     return re.sub(r' (Helmet|Hat|Hood|Mask|Cap)$', ' Armor', n)
 

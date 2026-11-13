@@ -10,6 +10,11 @@ const SKILL_XP = [50, 175, 375, 675, 1175, 1925, 2925, 4425, 6425, 9925, 14925, 
   64072425, 68972425, 74172425, 79672425, 85472425, 91572425, 97972425, 104672425, 111672425];
 const HOTM_XP = [0, 3000, 12000, 37000, 97000, 197000, 347000, 557000, 847000, 1247000];
 const HOTF_XP = [0, 3000, 12000, 37000, 97000, 197000, 347000, 547000];
+// Catacombs XP needed for each level (cumulative).
+const CATA_XP = [50, 125, 235, 395, 625, 955, 1425, 2095, 3045, 4385, 6275, 8940, 12700, 17960, 25340, 35640, 50040, 70040,
+  97640, 135640, 188140, 259640, 356640, 488640, 668640, 911640, 1239640, 1684640, 2284640, 3084640, 4149640, 5559640,
+  7459640, 9959640, 13259640, 17559640, 23159640, 30359640, 39559640, 51559640, 66559640, 85559640, 109559640,
+  139559640, 177559640, 225559640, 285559640, 360559640, 453559640, 569809640];
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 
 let data = null;
@@ -18,6 +23,7 @@ let st = U.readLS(KEY, null) || {};
 st = { tab: st.tab || 'mining' };
 
 const img = id => `<img src="../icons/${encodeURIComponent(id)}.png" alt="" loading="lazy" onerror="this.src='../icons/BARRIER.png'">`;
+const cap = w => w.charAt(0).toUpperCase() + w.slice(1);
 const tierOf = (xp, table) => table.filter(n => xp >= n).length;
 
 /** How many of a rung's items you own (pieces for a set). */
@@ -33,6 +39,8 @@ function reqs(r) {
     if (q.skill) return { text: `${U.pretty(q.skill)} ${q.lv}`, ok: me && me.skills[q.skill] !== undefined ? me.skills[q.skill] >= q.lv : null };
     if (q.hotm) return { text: `HotM ${q.hotm}`, ok: me ? me.hotm >= q.hotm : null };
     if (q.hotf) return { text: `HotF ${q.hotf}`, ok: me ? me.hotf >= q.hotf : null };
+    if (q.slayer) return { text: `${cap(q.slayer)} Slayer ${q.lv}`, ok: me ? (me.slayer[q.slayer] || 0) >= q.lv : null };
+    if (q.floor) return { text: `Catacombs Floor ${ROMAN[q.floor]}`, ok: me ? me.floors.has(q.floor) : null };
     if (q.coll) return { text: `${q.name} ${ROMAN[q.tier] || q.tier}`, ok: me && me.coll.size ? me.coll.has(`${q.coll.replace('-', ':')}_${q.tier}`) : null };
     return { text: q.text, ok: null };
   });
@@ -82,9 +90,11 @@ function render() {
   const lv = me && me.skills[sk.skill];
   $('#levels').innerHTML = me ? `<div class="stat"><div class="k">${U.esc(sk.name)} level</div><div class="v">${lv ?? '?'}</div></div>
     ${sk.id === 'mining' ? `<div class="stat"><div class="k">HotM tier</div><div class="v">${me.hotm}</div></div>` : ''}
-    ${sk.id === 'foraging' ? `<div class="stat"><div class="k">HotF tier</div><div class="v">${me.hotf}</div></div>` : ''}` : '';
+    ${sk.id === 'foraging' ? `<div class="stat"><div class="k">HotF tier</div><div class="v">${me.hotf}</div></div>` : ''}
+    ${sk.id === 'combat' ? `<div class="stat"><div class="k">Catacombs level</div><div class="v">${me.skills.CATACOMBS}</div></div>
+      <div class="stat"><div class="k">Slayers</div><div class="v" style="font-size:15px">${['zombie', 'spider', 'wolf', 'enderman', 'blaze', 'vampire'].map(k => `${cap(k)} ${me.slayer[k] || 0}`).join(' · ')}</div></div>` : ''}` : '';
   $('#list').innerHTML = `<div class="pg-grid">${sk.tracks.map(renderTrack).join('')}</div>
-    <p class="hint">Ladders follow ${data.sources.map(([n, u]) => `<a href="${U.esc(u)}" target="_blank" rel="noopener">${U.esc(n)}</a>`).join(', ')}. Click an item name for its wiki page.</p>`;
+    <p class="hint">Ladders follow ${data.sources.map(([n, u]) => `<a href="${U.esc(u)}" target="_blank" rel="noopener">${U.esc(n)}</a>`).join(', ')}. Click an item name for its wiki page.${sk.id === 'combat' ? ' Combat follows the usual community path (collections, the End, slayers, Dungeons, then Kuudra), since no single guide covers it. Equipment is ranked by Strength, Crit Damage, Health and Defense.' : ''}</p>`;
   // Quick picks: the next item in every track that you can get right now.
   if (!me) { $('#quick').innerHTML = '<p class="hint">Log in to see what you can work on right now.</p>'; return; }
   const picks = [];
@@ -122,9 +132,17 @@ async function applyProfile(d) {
   const exp = (m.player_data || {}).experience || {};
   const skills = {};
   for (const [k, v] of Object.entries(exp)) skills[k.replace(/^SKILL_/, '')] = SKILL_XP.filter(n => v >= n).length;
+  const cata = (((m.dungeons || {}).dungeon_types || {}).catacombs) || {};
+  skills.CATACOMBS = CATA_XP.filter(n => (cata.experience || 0) >= n).length;
+  const slayer = {};
+  for (const [k, v] of Object.entries(((m.slayer || {}).slayer_bosses) || {})) {
+    const claimed = Object.keys(v.claimed_levels || {}).map(x => +(x.match(/^level_(\d+)/) || [])[1] || 0);
+    slayer[k] = Math.max(0, ...claimed);
+  }
+  const floors = new Set(Object.entries(cata.tier_completions || {}).filter(([, n]) => n > 0).map(([f]) => +f));
   const tx = ((m.skill_tree || {}).experience) || {};
   me = {
-    items, museum, skills,
+    items, museum, skills, slayer, floors,
     pets: new Set((((m.pets_data || {}).pets) || []).map(p => p.type)),
     hotm: tierOf(tx.mining || 0, HOTM_XP), hotf: tierOf(tx.foraging || 0, HOTF_XP),
     coll: new Set(((m.player_data || {}).unlocked_coll_tiers) || []),
