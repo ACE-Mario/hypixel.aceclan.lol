@@ -405,7 +405,8 @@ const Tree = (() => {
       s.ability = p.ability && levels[p.ability] ? p.ability : abilities.find(a => levels[a]) || '';
       if (cfg.onPreset) cfg.onPreset(p);
       render();
-      $('#grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Scroll to what the preset changes first (HotM: the gear panel), else the tree.
+      ($(cfg.presetScroll || '#grid') || $('#grid')).scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function setLevel(id, v) {

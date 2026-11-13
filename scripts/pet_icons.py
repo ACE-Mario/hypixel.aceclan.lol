@@ -20,10 +20,13 @@ def main(zpath, types):
     z = zipfile.ZipFile(zpath)
     root = z.namelist()[0].split('/')[0]
     names = [n for n in z.namelist() if re.search(r'/items/[A-Z0-9_]+;\d\.json$', n)]
+    # Runes and other items use the same TYPE;N file names, so 'all' means every real pet type.
+    pets = set(json.loads(z.read(f'{root}/constants/petnums.json').decode('utf8')))
+    pets |= set(json.loads(z.read(f'{root}/constants/pets.json').decode('utf8')).get('pet_types', {}))
     by_type = {}
     for n in sorted(names):
         t, r = n.split('/')[-1][:-5].split(';')
-        if types == ['all'] or t in types:
+        if (types == ['all'] and t in pets) or t in types:
             if t not in by_type or r == '4':
                 by_type[t] = n
     for t, n in sorted(by_type.items()):
