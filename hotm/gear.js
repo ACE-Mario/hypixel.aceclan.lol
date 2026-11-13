@@ -36,7 +36,7 @@ const Gear = (() => {
   const GOD_POT = { speed: 200, fortune: 25 }; // Haste IV and Spelunker V
 
   let g = U.readLS(KEY, null) || {};
-  g = { block: g.block || 'ruby', shaft: !!g.shaft, otherSpeed: g.otherSpeed || 0, otherFortune: g.otherFortune || 0, pick: g.pick || {}, god: g.god !== false, mall: g.mall || '' };
+  g = { block: g.block || 'ruby', shaft: !!g.shaft, otherSpeed: g.otherSpeed || 0, otherFortune: g.otherFortune || 0, pick: g.pick || {}, god: g.god !== false, mall: g.mall || '', noMall: g.noMall !== false };
   let owned = null;   // slot -> [{ key, name, speed, fortune: {all, gem, metal, block}, pristine }]
   let api = null;
   let acc = null;     // accessory bag totals { speed, fortune, pristine, n }
@@ -180,8 +180,8 @@ const Gear = (() => {
       if (h && h.titanium && b.id === 'titanium') pf += h.titanium;
       parts.pet = { speed: Math.round(ps), fortune: Math.round(pf) };
     }
-    if (g.mall === 'speed') parts.mall = { speed: 100, fortune: 0 };
-    if (g.mall === 'fortune') parts.mall = { speed: 0, fortune: 50 };
+    if (!g.noMall && g.mall === 'speed') parts.mall = { speed: 100, fortune: 0 };
+    if (!g.noMall && g.mall === 'fortune') parts.mall = { speed: 0, fortune: 50 };
     if (g.god) parts.god = { speed: GOD_POT.speed, fortune: GOD_POT.fortune };
     parts.other = { speed: +g.otherSpeed || 0, fortune: +g.otherFortune || 0 };
     const sum = k => Object.values(parts).reduce((n, x) => n + x[k], 0);
@@ -234,7 +234,8 @@ const Gear = (() => {
         <label class="field">Other Mining Speed <input type="number" id="gSpeed" min="0" value="${g.otherSpeed || ''}" placeholder="0" style="width:120px"></label>
         <label class="field">Other fortune <input type="number" id="gFort" min="0" value="${g.otherFortune || ''}" placeholder="0" style="width:120px"></label>
         <label><input type="checkbox" id="gShaft" ${g.shaft ? 'checked' : ''}> In a Glacite Mineshaft</label>
-        <label class="field">Today's Sky Mall <select id="gMall">${MALL.map(([v, l]) => opt(v, l, g.mall)).join('')}</select></label>
+        <label><input type="checkbox" id="gNoMall" ${g.noMall ? 'checked' : ''}> Ignore Sky Mall</label>
+        <label class="field">Today's Sky Mall <select id="gMall" ${g.noMall ? 'disabled' : ''}>${MALL.map(([v, l]) => opt(v, l, g.mall)).join('')}</select></label>
         <label><input type="checkbox" id="gGod" ${g.god ? 'checked' : ''}> God Potion (+${GOD_POT.speed} speed, +${GOD_POT.fortune} fortune)</label>
       </div>
       ${owned ? (slotRows ? `<div class="controls ht-gear">${slotRows}</div>`
@@ -305,6 +306,7 @@ const Gear = (() => {
     else if (el.id === 'gShaft') g.shaft = el.checked;
     else if (el.id === 'gGod') g.god = el.checked;
     else if (el.id === 'gMall') g.mall = el.value;
+    else if (el.id === 'gNoMall') g.noMall = el.checked;
     else if (el.id === 'gSpeed') g.otherSpeed = Math.max(0, +el.value || 0);
     else if (el.id === 'gFort') g.otherFortune = Math.max(0, +el.value || 0);
     else if (el.dataset.slot) g.pick[el.dataset.slot] = el.value;
