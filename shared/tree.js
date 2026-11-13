@@ -294,10 +294,18 @@ const Tree = (() => {
         </div></div>`).join('');
     }
 
+    // Hooks for page-specific panels (the HotM gear panel): read the plan, change it, evaluate stats.
+    const api = {
+      tree: t, get state() { return s; }, render: () => render(),
+      stat: (id, lv) => (lv > 0 && perks[id] && perks[id].stats ? +t.run(perks[id].stats.stat, t.env(lv, s)) || 0 : 0),
+      levelCost: (id, lv) => { const c = t.step(id, lv - 1, s); return c ? c[1] : 0; },
+      pname,
+    };
     function render() {
       $('#tier').value = s.tier;
       renderGrid(); renderDetail(); renderStats(); renderList();
       save();
+      if (cfg.onRender) cfg.onRender(api);
     }
 
     function applyPreset(p, tierOnly) {
@@ -370,7 +378,7 @@ const Tree = (() => {
     renderPresets();
     render();
 
-    function applyProfile(d, fresh) {
+    async function applyProfile(d, fresh) {
       const m = d.member, st = m.skill_tree || {};
       const nodes = (st.nodes || {})[cfg.node] || {};
       const cur = blank();
@@ -382,6 +390,7 @@ const Tree = (() => {
       s.have = have;
       if (changed) { s.tier = t.tierFromXp(xp); s.plan = { ...cur }; s.ability = s.curAbility; }
       s.fromProfile = true;
+      if (cfg.onProfile) await cfg.onProfile(d, api);
       render();
       const n = ids.filter(id => cur[id] > 0).length;
       return `${cfg.label} tier ${t.tierFromXp(xp)}, ${n} perk${n === 1 ? '' : 's'} unlocked`;

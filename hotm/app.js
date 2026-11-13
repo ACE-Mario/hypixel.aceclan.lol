@@ -66,4 +66,6 @@ const powderOf = m => {
 Tree.page({
   data: '../data/hotm.json', storeKey: 'ace-hypixel.hotm.v1', node: 'mining', label: 'HotM',
   presets: PRESETS, powderOf,
+  onRender: api => Gear.render(api),
+  onProfile: d => Gear.load(d),
 }).catch(err => { console.error(err); document.querySelector('#grid').innerHTML = '<p class="empty-note">Could not load the tree. Try refreshing.</p>'; });

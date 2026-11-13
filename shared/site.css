@@ -509,3 +509,4 @@ button.chip:hover { border-color: var(--muted); color: var(--text); }
 @media (max-width: 640px) { .un-row { grid-template-columns: 1fr; } }
 .un-scroll { overflow-x: auto; }
 @media (max-width: 640px) { .un-scroll td:nth-child(3), .un-scroll th:nth-child(3) { display: none; } }
+.ht-gear .field select { max-width: 260px; }
