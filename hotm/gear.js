@@ -41,6 +41,9 @@ const Gear = (() => {
   let api = null;
   let acc = null;     // accessory bag totals { speed, fortune, pristine, n }
   let skill = null;   // Mining skill level
+  let pet = null;     // active pet { name, level, rarity, stats: {MINING_SPEED...}, other: [], ab: [] }
+  const petData = fetch('../data/pets.json').then(r => r.json()).catch(() => null);
+  const PRISTINE_PERKS = { mining_master: 'gem' };
   const save = () => U.writeLS(KEY, g);
   const blockOf = () => BLOCKS.find(b => b.id === g.block) || BLOCKS[0];
   const applies = (where, b) => where === 'all' || where === b.kind || (where === 'shaft' && g.shaft);
@@ -61,7 +64,32 @@ const Gear = (() => {
     };
   }
 
+  /** Level and mining stats of the active pet, from its XP and the NEU stat tables. */
+  function petStats(p, data) {
+    const table = data.pets[p.type];
+    if (!table) return { name: U.pretty(p.type), rarity: p.tier, level: null, stats: {}, other: [], ab: [] };
+    const rarity = p.heldItem === 'PET_ITEM_TIER_BOOST' ? ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC'][
+      Math.min(5, ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC'].indexOf(p.tier) + 1)] : p.tier;
+    const custom = data.custom[p.type] || {};
+    const max = custom.max || 100;
+    const levels = data.levels.slice(data.offset[rarity] || 0).concat(custom.levels || []);
+    let level = 1, need = 0;
+    for (let i = 0; i < max - 1 && i < levels.length; i++) { need += levels[i]; if (p.exp >= need) level = i + 2; else break; }
+    const r = table[rarity] || table[Object.keys(table).pop()];
+    const lo = r['1'] || { s: {}, o: [] }, hi = r['100'] || lo;
+    const f = Math.min(1, (level - 1) / 99);
+    const lerp = (a, b) => a + (b - a) * f;
+    const stats = {};
+    for (const k of Object.keys(hi.s)) stats[k] = lerp(lo.s[k] || 0, hi.s[k]);
+    const other = hi.o.map((v, i) => lerp(lo.o[i] || 0, v));
+    const ab = (data.abilities[p.type] || []).map(([i, stat, when]) => ({ v: other[i] || 0, stat, when }));
+    return { name: U.pretty(p.type), rarity, level, stats, other, ab };
+  }
+
   async function load(d) {
+    const data = await petData;
+    const active = (((d.member.pets_data || {}).pets) || []).find(p => p.active);
+    pet = active && data ? petStats(active, data) : active ? { name: U.pretty(active.type), rarity: active.tier, level: null, stats: {}, ab: [] } : null;
     const inv = d.member.inventory || {};
     const sources = [inv.inv_armor, inv.equipment_contents, inv.inv_contents, inv.ender_chest_contents, inv.wardrobe_contents,
       inv.personal_vault_contents, ...Object.values(inv.backpack_contents || {})];
@@ -95,7 +123,7 @@ const Gear = (() => {
         const key = String(it.ea.uuid || it.id);
         if (seen.has(key)) continue;
         seen.add(key);
-        owned[slot[0]].push({ key, name: U.plain(it.name || it.id).replace(/[-]/g, '').trim(), ...st });
+        owned[slot[0]].push({ key, drill: /\bDRILL\b/.test(last), name: U.plain(it.name || it.id).replace(/[-]/g, '').trim(), ...st });
       }
     }
   }
@@ -112,17 +140,33 @@ const Gear = (() => {
   }
   function gearTotals(b) {
     let speed = 0, fortune = 0, pristine = 0;
+    let gearPristine = 0;
     for (const [slot] of SLOTS) {
       const x = chosen(slot, b);
-      if (x) { speed += x.speed; fortune += fortuneFor(x, b); pristine += x.pristine; }
+      if (x) { speed += x.speed; fortune += fortuneFor(x, b); pristine += x.pristine; gearPristine += x.pristine; }
     }
     const parts = { gear: { speed, fortune } };
     if (acc) { parts.acc = { speed: acc.speed, fortune: fortuneFor(acc, b) }; pristine += acc.pristine; }
     if (skill) parts.skill = { speed: 0, fortune: skill * SKILL_FORTUNE };
+    if (pet) {
+      const tool = chosen('tool', b);
+      let ps = pet.stats.MINING_SPEED || 0, pf = pet.stats.MINING_FORTUNE || 0;
+      if (b.kind === 'gem') pf += pet.stats.GEMSTONE_FORTUNE || 0;
+      pristine += pet.stats.PRISTINE || 0;
+      for (const a of pet.ab) {
+        const on = a.when === 'all' || (a.when === 'drill' && tool && tool.drill && b.kind === 'gem')
+          || (a.when === 'mithril' && b.id.startsWith('mithril')) || (a.when === 'shaft' && g.shaft);
+        if (!on) continue;
+        if (a.stat === 'speed') ps += a.v; else if (a.stat === 'pristine') pristine += a.v; else pf += a.v;
+      }
+      parts.pet = { speed: Math.round(ps), fortune: Math.round(pf) };
+    }
     if (g.god) parts.god = { speed: GOD_POT.speed, fortune: GOD_POT.fortune };
     parts.other = { speed: +g.otherSpeed || 0, fortune: +g.otherFortune || 0 };
     const sum = k => Object.values(parts).reduce((n, x) => n + x[k], 0);
-    return { speed: sum('speed'), fortune: sum('fortune'), pristine, parts };
+    const pristineParts = { gear: gearPristine, acc: acc ? acc.pristine : 0 };
+    pristineParts.pet = Math.round((pristine - pristineParts.gear - pristineParts.acc) * 100) / 100;
+    return { speed: sum('speed'), fortune: sum('fortune'), pristine, pristineParts, parts };
   }
   const perkSum = (perks, b, levels) => Object.entries(perks).reduce((n, [id, where]) => n + (applies(where, b) ? api.stat(id, levels[id] || 0) : 0), 0);
 
@@ -157,7 +201,10 @@ const Gear = (() => {
         `${x.name} (${x.speed ? U.num(x.speed) + ' speed, ' : ''}${U.num(fortuneFor(x, b))} fortune)`, cur && cur.key)).join('')}</select></label>`;
     }).join('');
     const fortName = FORTUNE_NAME[b.kind] ? `Mining + ${FORTUNE_NAME[b.kind]}` : 'Mining Fortune';
-    const LABEL = { gear: 'gear', acc: 'accessories', skill: `Mining ${skill}`, god: 'God Potion', other: 'other' };
+    const LABEL = { gear: 'gear', acc: 'accessories', skill: `Mining ${skill}`, pet: pet ? `${pet.name} pet` : 'pet', god: 'God Potion', other: 'other' };
+    const pMaster = api.stat('mining_master', plan.mining_master || 0);
+    const priParts = [...Object.entries(tot.pristineParts).filter(([, v]) => v).map(([k, v]) => `${U.num(v)} ${LABEL[k]}`),
+      ...(pMaster ? [`${U.num(pMaster)} Mining Master`] : [])].join(' + ') || 'none yet';
     const from = k => Object.entries(tot.parts).filter(([, x]) => x[k]).map(([n, x]) => `${U.num(x[k])} ${LABEL[n]}`).join(' + ') || '0';
     const stat = (k, v, hint) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div><div class="hint" style="margin:4px 0 0">${hint}</div></div>`;
     host.innerHTML = `
@@ -176,11 +223,12 @@ const Gear = (() => {
         ${stat(`${U.esc(b.name)} breaks in`, tk === Infinity ? '—' : tk === 1 ? 'Instantly' : `${tk} ticks`,
           tk === Infinity ? 'Add your speed first' : better ? `${better === 1 ? 'Instant' : better + ' ticks'} at ${U.num(need)} speed (${U.num(need - total)} more)` : 'As fast as it gets')}
         ${stat(fortName, U.num(tot.fortune + pFort), `${from('fortune')} + ${U.num(pFort)} from this plan`)}
-        ${tot.pristine ? stat('Pristine', U.num(tot.pristine + api.stat('mining_master', plan.mining_master || 0)), 'gear, accessories and Mining Master') : ''}
+        ${b.kind === 'gem' || tot.pristine ? stat('Pristine', U.num(tot.pristine + pMaster), priParts) : ''}
       </div>
       ${tk !== Infinity && tk > 1 ? `<p class="hint">Any speed between ${U.num(keep)} and ${U.num(need)} breaks ${U.esc(b.name)} in the same ${tk} ticks, so powder spent on speed in that gap is wasted.</p>` : ''}
+      ${pet ? `<p class="hint">Active pet: <b>${U.esc(pet.name)}</b> (${U.esc(U.pretty(pet.rarity || ''))}${pet.level ? `, level ${pet.level}` : ''})${pet.level === null ? '. It has no mining stats, so it adds nothing here.' : ''}${pet.ab.some(a => a.when === 'magma') ? '. Its Pristine bonus only works in the Magma Fields, so it isn\'t counted.' : ''}</p>` : ''}
       ${owned && !acc ? '<p class="hint">Your accessory bag is not on the API. Turn on the Inventory API to count it.</p>' : ''}
-      <p class="hint">"Other" is what the API can't show: your pet, your power stone, and the Sky Mall buff.
+      <p class="hint">"Other" is what the API can't show: your power stone, your pet's held item, and the Sky Mall buff.
         Break time is ⌈30 × block strength ÷ speed⌉ ticks, with a 4-tick minimum unless the block breaks instantly.</p>
       <div class="controls"><button type="button" class="btn" id="gTune">Tune this plan for ${U.esc(b.name)}</button></div>
       <div id="gMsg"></div>`;
@@ -215,8 +263,8 @@ const Gear = (() => {
       if (!pick) break;
       plan[pick]--;
     }
-    for (const id of Object.keys(FORTUNE_PERKS)) {
-      if (applies(FORTUNE_PERKS[id], b) && plan[id] > 0 && t.perks[id].tier <= s.tier) plan[id] = t.perks[id].max;
+    for (const id of [...Object.keys(FORTUNE_PERKS), ...Object.keys(PRISTINE_PERKS)]) {
+      if (applies(FORTUNE_PERKS[id] || PRISTINE_PERKS[id], b) && plan[id] > 0 && t.perks[id].tier <= s.tier) plan[id] = t.perks[id].max;
     }
     s.plan = plan;
     const after = {};
@@ -225,7 +273,7 @@ const Gear = (() => {
     api.render();
     const changes = diff.map(([k, n]) => `${n > 0 ? 'saves' : 'costs'} ${U.num(Math.abs(n))} ${api.pname(k)}`).join(', ');
     const speeds = speedIds.map(id => `${U.esc(t.perks[id].name)} ${plan[id]}`).join(', ');
-    return `Set for ${best === 1 ? 'instant' : best + '-tick'} ${U.esc(b.name)}${speeds ? ` (${speeds})` : ''}, with the fortune perks in your plan maxed. ${changes ? 'This ' + changes + '.' : 'No change in powder.'}`;
+    return `Set for ${best === 1 ? 'instant' : best + '-tick'} ${U.esc(b.name)}${speeds ? ` (${speeds})` : ''}, with the fortune${b.kind === 'gem' ? ' and Pristine' : ''} perks in your plan maxed. ${changes ? 'This ' + changes + '.' : 'No change in powder.'}`;
   }
 
   document.addEventListener('change', e => {

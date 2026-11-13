@@ -41,6 +41,8 @@ ACE Clan's Hypixel SkyBlock tools. This is a separate site from the main clan si
 - `data/museum.json`: museum items, XP and armour sets (Hypixel items API) with recipes broken down to
   raw materials (NEU). Refresh with `python scripts/extract_museum.py NotEnoughUpdates-REPO-master.zip`.
 
+- `data/pets.json`: pet levelling and the stats of pets that help mining (NEU), for the HotM gear panel.
+  Refresh with `python scripts/extract_pets.py NotEnoughUpdates-REPO-master.zip`.
 - `data/hotm.json` and `data/hotf.json`: tree layouts, costs and stats (NEU). Heart of the Forest costs
   aren't in NEU, so `scripts/extract_trees.py` fills them in from the wiki (update `HOTF_EXP` there if
   they change). Refresh with `python scripts/extract_trees.py NotEnoughUpdates-REPO-master.zip`.
