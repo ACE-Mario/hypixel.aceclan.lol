@@ -23,6 +23,10 @@ ABILITIES = {
     'GLACITE_GOLEM': [(1, 'fortune', 'shaft')],    # Iceborn: +X Mining Fortune in Glacite Mineshafts
     'BAL': [(0, 'pristine', 'magma')],             # Furnace: +X Pristine in the Magma Fields
     'MONKEY': [(0, 'forfortune', 'all')],          # Treeborn: +X Foraging Fortune
+    'SNAIL': [(2, 'spread', 'block'),              # Slimy Reach: +X Mining Spread on Blocks (Legendary)
+              (1, 'snailbf', 'block')],            # Slow and Steady: +1 Block Fortune per X Speed above 100
+    'GOBLIN': [(1, 'spread', 'divan')],            # Fetid Thief: +X Mining Spread in the Mines of Divan
+    'ARMADILLO': [(1, 'spread', 'hardstone')],     # Long Claws: +X Mining Spread on Hard Stone (Legendary+)
 }
 
 

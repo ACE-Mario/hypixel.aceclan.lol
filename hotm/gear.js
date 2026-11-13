@@ -39,7 +39,7 @@ const Gear = (() => {
   const GOD_POT = { speed: 200, fortune: 25 }; // Haste IV and Spelunker V
 
   let g = U.readLS(KEY, null) || {};
-  g = { block: g.block || 'ruby', shaft: !!g.shaft, otherSpeed: g.otherSpeed || 0, otherFortune: g.otherFortune || 0, pick: g.pick || {}, god: g.god !== false, mall: g.mall || '', noMall: g.noMall !== false };
+  g = { block: g.block || 'ruby', shaft: !!g.shaft, otherSpeed: g.otherSpeed || 0, otherFortune: g.otherFortune || 0, otherSpread: g.otherSpread || 0, sheer: !!g.sheer, speedStat: g.speedStat || 0, pick: g.pick || {}, god: g.god !== false, mall: g.mall || '', noMall: g.noMall !== false };
   let owned = null;   // slot -> [{ key, name, speed, fortune: {all, gem, metal, block}, pristine }]
   let api = null;
   let acc = null;     // accessory bag totals { speed, fortune, pristine, n }
@@ -57,8 +57,13 @@ const Gear = (() => {
   };
   const save = () => U.writeLS(KEY, g);
   const blockOf = () => BLOCKS.find(b => b.id === g.block) || BLOCKS[0];
-  // Per piece. Mining Spread "on Ores" counts on pure blocks too.
+  // Per piece. Their Mining Spread works on Ores and Blocks (pure blocks, Hard Stone), not on Dwarven Metals.
   const MINERAL = { MINERAL: { block: 25, spread: 100 }, GLOSSY_MINERAL: { block: 50, spread: 150 } };
+  const SHEER_FORCE = 200;
+  // Mining Spread works on Blocks, Ores and Dwarven Metals (gemstones have Gemstone Spread instead).
+  const hasSpread = b => b.kind === 'block' || b.kind === 'metal';
+  const spreadFor = (x, b) => (hasSpread(b) ? (x.spread || 0) + (b.kind === 'block' ? x.spreadBlock || 0 : 0) : 0);
+  const SPREAD_WHERE = { block: 'Blocks', divan: 'Mines of Divan', hardstone: 'Hard Stone' };
   // Perks that give Mining Spread, and where.
   const SPREAD_PERKS = { efficient_miner: 'all', mole: 'hardstone' };
   const applies = (where, b) => where === 'all' || where === b.kind || where === b.id || (where === 'shaft' && g.shaft);
@@ -79,7 +84,9 @@ const Gear = (() => {
         metal: num(/^Dwarven Metal Fortune: \+([\d,.]+)/), block: num(/^Block Fortune: \+([\d,.]+)/) || fixed.block,
       },
       pristine: num(/^Pristine: \+([\d,.]+)/),
-      spread: (num(/^Mining Spread: \+([\d,.]+)/) || num(/Grants \+([\d,.]+) Mining Spread on Ores/) || fixed.spread),
+      spread: num(/^Mining Spread: \+([\d,.]+)/),
+      // Spread that only counts on blocks: Mineral armour, the Fleet reforge ("towards Blocks").
+      spreadBlock: num(/\+([\d,.]+)\D{0,2}Mining Spread (?:on Ores|towards Blocks)/) || fixed.spread,
     };
   }
 
@@ -126,13 +133,13 @@ const Gear = (() => {
     const bag = (inv.bag_contents || {}).talisman_bag;
     acc = null;
     if (bag && bag.data) {
-      acc = { speed: 0, fortune: { all: 0, gem: 0, metal: 0, block: 0 }, pristine: 0, spread: 0, n: 0 };
+      acc = { speed: 0, fortune: { all: 0, gem: 0, metal: 0, block: 0 }, pristine: 0, spread: 0, spreadBlock: 0, n: 0 };
       let list = [];
       try { list = await U.nbtItems(bag.data); } catch (e) { console.error(e); }
       for (const it of list) {
         const st = itemStats(it);
-        if (!st.speed && !st.fortune.all && !st.fortune.gem && !st.fortune.metal && !st.fortune.block && !st.pristine) continue;
-        acc.n++; acc.speed += st.speed; acc.pristine += st.pristine; acc.spread += st.spread;
+        if (!st.speed && !st.fortune.all && !st.fortune.gem && !st.fortune.metal && !st.fortune.block && !st.pristine && !st.spread && !st.spreadBlock) continue;
+        acc.n++; acc.speed += st.speed; acc.pristine += st.pristine; acc.spread += st.spread; acc.spreadBlock += st.spreadBlock;
         for (const k of Object.keys(acc.fortune)) acc.fortune[k] += st.fortune[k];
       }
     }
@@ -157,7 +164,7 @@ const Gear = (() => {
         const slot = SLOTS.find(([, , re]) => re.test(last));
         if (!slot) continue;
         const st = itemStats(it);
-        if (!st.speed && !st.fortune.all && !st.fortune.gem && !st.fortune.metal && !st.fortune.block) continue;
+        if (!st.speed && !st.fortune.all && !st.fortune.gem && !st.fortune.metal && !st.fortune.block && !st.spread && !st.spreadBlock) continue;
         const key = String(it.ea.uuid || it.id);
         if (seen.has(key)) continue;
         seen.add(key);
@@ -181,6 +188,8 @@ const Gear = (() => {
         key: p.uuid || `${p.type}:${p.tier}:${p.exp}`, id: 'PET_' + p.type, pet: st, worn: !!p.active,
         rawName: `§7[Lvl ${st.level || st.xpLevel || '?'}] §${col}${st.name}`,
         lore: [`§8${U.pretty(st.rarity)} pet`, ...Object.entries(st.stats).filter(([k]) => /MINING|PRISTINE|GEMSTONE/.test(k)).map(([k, v]) => `§7${U.pretty(k)}: §a+${U.num(v)}`),
+          ...st.ab.filter(a => a.stat === 'spread' && a.v).map(a => `§7Mining Spread (${SPREAD_WHERE[a.when] || a.when}): §a+${U.num(Math.round(a.v))}`),
+          ...st.ab.filter(a => a.stat === 'snailbf' && a.v).map(a => `§7+1 Block Fortune per ${U.num(Math.round(a.v * 100) / 100)} Speed above 100`),
           ...(st.held ? [`§7Holding: §e${HELD[st.held] ? HELD[st.held].name : U.pretty(st.held.replace(/^PET_ITEM_/, ''))}`] : [])],
         speed: 0, fortune: { all: 0, gem: 0, metal: 0, block: 0 }, pristine: 0,
       });
@@ -188,13 +197,20 @@ const Gear = (() => {
   }
 
   const fortuneFor = (x, b) => x.fortune.all + (x.fortune[b.kind] || 0);
-  /** What a pet adds while mining block b: { speed, fortune, pristine }. */
+  /** What a pet adds while mining block b: { speed, fortune, pristine, spread }. */
   function petParts(pt, b, tool) {
-    let ps = pt.stats.MINING_SPEED || 0, pf = pt.stats.MINING_FORTUNE || 0, pr = pt.stats.PRISTINE || 0;
+    let ps = pt.stats.MINING_SPEED || 0, pf = pt.stats.MINING_FORTUNE || 0, pr = pt.stats.PRISTINE || 0, sp = 0;
     if (b.kind === 'gem') pf += pt.stats.GEMSTONE_FORTUNE || 0;
     for (const a of pt.ab) {
       const on = a.when === 'all' || (a.when === 'drill' && tool && tool.drill && b.kind === 'gem')
         || (a.when === 'mithril' && b.id.startsWith('mithril')) || (a.when === 'shaft' && g.shaft);
+      if (a.stat === 'spread' || a.stat === 'snailbf') {
+        const here = a.when === 'block' ? b.kind === 'block' : a.when === 'divan' ? b.id === 'goldblock' : b.id === a.when;
+        if (!here || !a.v) continue;
+        // Slow and Steady: +1 Block Fortune per a.v Speed above 100 (your Speed stat, typed in).
+        if (a.stat === 'snailbf') pf += Math.floor(Math.max(0, (+g.speedStat || 0) - 100) / a.v); else sp += a.v;
+        continue;
+      }
       if (!on || a.stat === 'forfortune') continue;
       if (a.stat === 'speed') ps += a.v; else if (a.stat === 'pristine') pr += a.v; else pf += a.v;
     }
@@ -202,7 +218,7 @@ const Gear = (() => {
     const lvl = pt.level || pt.xpLevel || 0;
     if (h && h.per2) { ps += Math.floor(lvl / 2); pf += Math.floor(lvl / 2); }
     if (h && h.titanium && b.id === 'titanium') pf += h.titanium;
-    return { speed: Math.round(ps), fortune: Math.round(pf), pristine: Math.round(pr * 100) / 100 };
+    return { speed: Math.round(ps), fortune: Math.round(pf), pristine: Math.round(pr * 100) / 100, spread: Math.round(sp) };
   }
   /** The item used for a slot: your pick, else the one with most speed (tool) or most fortune (everything else). */
   function chosen(slot, b) {
@@ -211,10 +227,10 @@ const Gear = (() => {
     const pick = list.find(x => x.key === g.pick[slot]);
     if (pick) return pick;
     const score = slot === 'pet'
-      ? x => { const t = list === owned.pet ? chosen('tool', b) : null; const r = petParts(x.pet, b, t); return r.fortune * 10 + r.speed + r.pristine * 100; }
+      ? x => { const t = list === owned.pet ? chosen('tool', b) : null; const r = petParts(x.pet, b, t); return (r.fortune + r.spread * 10) * 10 + r.speed + r.pristine * 100; }
       : x => {
-        // Each 100 spread is roughly one extra block per break, so on blocks it beats the same amount of fortune by a lot.
-        const sp = b.kind === 'block' ? x.spread * 10 : 0;
+        // Each 100 spread is roughly one extra block per break, so it beats the same amount of fortune by a lot.
+        const sp = spreadFor(x, b) * 10;
         return slot === 'tool' ? x.speed * 10 + fortuneFor(x, b) + sp : (fortuneFor(x, b) + sp) * 10 + x.speed;
       };
     return list.slice().sort((a, c) => score(c) - score(a))[0];
@@ -225,9 +241,9 @@ const Gear = (() => {
     for (const [slot] of SLOTS) {
       if (slot === 'pet') continue;
       const x = chosen(slot, b);
-      if (x) { speed += x.speed; fortune += fortuneFor(x, b); pristine += x.pristine; gearPristine += x.pristine; spread += x.spread; }
+      if (x) { speed += x.speed; fortune += fortuneFor(x, b); pristine += x.pristine; gearPristine += x.pristine; spread += spreadFor(x, b); }
     }
-    const spreadParts = { gear: spread, acc: acc ? acc.spread : 0 };
+    const spreadParts = { gear: spread, acc: acc ? spreadFor(acc, b) : 0 };
     const parts = { gear: { speed, fortune } };
     if (acc) { parts.acc = { speed: acc.speed, fortune: fortuneFor(acc, b) }; pristine += acc.pristine; }
     if (skill) parts.skill = { speed: 0, fortune: skill * SKILL_FORTUNE };
@@ -237,7 +253,10 @@ const Gear = (() => {
       const r = petParts(pt, b, chosen('tool', b));
       pristine += r.pristine;
       parts.pet = { speed: r.speed, fortune: r.fortune };
+      spreadParts.pet = r.spread;
     }
+    if (g.sheer && hasSpread(b)) spreadParts.sheer = SHEER_FORCE;
+    spreadParts.other = hasSpread(b) ? +g.otherSpread || 0 : 0;
     if (!g.noMall && g.mall === 'speed') parts.mall = { speed: 100, fortune: 0 };
     if (!g.noMall && g.mall === 'fortune') parts.mall = { speed: 0, fortune: 50 };
     if (g.god) parts.god = { speed: GOD_POT.speed, fortune: GOD_POT.fortune };
@@ -300,7 +319,7 @@ const Gear = (() => {
       </div>${picker()}</div>` : '';
     const fortName = FORTUNE_NAME[b.kind] ? `Mining + ${FORTUNE_NAME[b.kind]}` : 'Mining Fortune';
     const petNow = owned && owned.pet.length ? chosen('pet', b) : null;
-    const LABEL = { gear: 'gear', acc: 'accessories', skill: `Mining ${skill}`, pet: petNow ? `${petNow.pet.name} pet` : pet ? `${pet.name} pet` : 'pet', mall: 'Sky Mall', god: 'God Potion', other: 'other' };
+    const LABEL = { gear: 'gear', acc: 'accessories', skill: `Mining ${skill}`, pet: petNow ? `${petNow.pet.name} pet` : pet ? `${pet.name} pet` : 'pet', mall: 'Sky Mall', god: 'God Potion', other: 'other', sheer: 'Sheer Force' };
     const pMaster = api.stat('mining_master', plan.mining_master || 0);
     const priParts = [...Object.entries(tot.pristineParts).filter(([, v]) => v).map(([k, v]) => `${U.num(v)} ${LABEL[k]}`),
       ...(pMaster ? [`${U.num(pMaster)} Mining Master`] : [])].join(' + ') || 'none yet';
@@ -322,24 +341,33 @@ const Gear = (() => {
         <label class="field">Today's Sky Mall <select id="gMall" ${g.noMall ? 'disabled' : ''}>${MALL.map(([v, l]) => opt(v, l, g.mall)).join('')}</select></label>
         <label><input type="checkbox" id="gGod" ${g.god ? 'checked' : ''}> God Potion (+${GOD_POT.speed} speed, +${GOD_POT.fortune} fortune)</label>
       </div>
+      ${hasSpread(b) ? `<div class="controls">
+        <label class="field">Other Mining Spread <input type="number" id="gSpread" min="0" value="${g.otherSpread || ''}" placeholder="0" style="width:120px"></label>
+        <label><input type="checkbox" id="gSheer" ${g.sheer ? 'checked' : ''}> Sheer Force active (+${SHEER_FORCE} spread for 25s)</label>
+        ${b.kind === 'block' && petNow && petNow.pet.ab.some(a => a.stat === 'snailbf' && a.v) ? `<label class="field">Your Speed (for the Snail pet) <input type="number" id="gSpeedStat" min="0" value="${g.speedStat || ''}" placeholder="100" style="width:120px"></label>` : ''}
+      </div>` : ''}
       <div class="stats">
         ${stat('Mining Speed', U.num(total), `${from('speed')} + ${U.num(pSpeed)} from this plan`)}
         ${stat(`${U.esc(b.name)} breaks in`, tk === Infinity ? '—' : tk === 1 ? 'Instantly' : `${tk} ticks`,
           tk === Infinity ? 'Add your speed first' : better ? `${better === 1 ? 'Instant' : better + ' ticks'} at ${U.num(need)} speed (${U.num(need - total)} more)` : 'As fast as it gets')}
         ${stat(fortName, U.num(tot.fortune + pFort), `${from('fortune')} + ${U.num(pFort)} from this plan`)}
         ${b.kind === 'gem' || tot.pristine ? stat('Pristine', U.num(tot.pristine + pMaster), priParts) : ''}
-        ${b.kind === 'block' ? (() => {
+        ${hasSpread(b) ? (() => {
           const pSpread = perkSum(SPREAD_PERKS, b, plan);
+          const all = Object.values(tot.spreadParts).reduce((n, v) => n + v, 0) + pSpread;
           const parts = [...Object.entries(tot.spreadParts).filter(([, v]) => v).map(([k, v]) => `${U.num(v)} ${LABEL[k]}`), `${U.num(pSpread)} from this plan`];
-          return stat('Mining Spread', U.num(tot.spreadParts.gear + tot.spreadParts.acc + pSpread), parts.join(' + '));
+          return stat('Mining Spread', U.num(all), parts.join(' + '));
         })() : ''}
       </div>
       ${tk !== Infinity && tk > 1 ? `<p class="hint">Any speed between ${U.num(keep)} and ${U.num(need)} breaks ${U.esc(b.name)} in the same ${tk} ticks, so powder spent on speed in that gap is wasted.</p>` : ''}
       ${pet && !petNow ? `<p class="hint">Active pet: <b>${U.esc(pet.name)}</b> (${U.esc(U.pretty(pet.rarity || ''))}${pet.level ? `, level ${pet.level}` : ''})${pet.held ? `, holding ${U.esc(HELD[pet.held] ? HELD[pet.held].name : U.pretty(pet.held.replace(/^PET_ITEM_/, '')))}` : ''}${!['MINING_SPEED', 'MINING_FORTUNE', 'PRISTINE', 'GEMSTONE_FORTUNE'].some(k => pet.stats[k]) && !pet.ab.some(x => x.stat !== 'forfortune') && !HELD[pet.held] ? '. Neither it nor its item has mining stats, so it adds nothing here.' : ''}${pet.ab.some(a => a.when === 'magma') ? '. Its Pristine bonus only works in the Magma Fields, so it isn\'t counted.' : ''}</p>` : ''}
       ${owned && !acc ? '<p class="hint">Your accessory bag is not on the API. Turn on the Inventory API to count it.</p>' : ''}
       <p class="hint">"Other" is for anything else, like a temporary buff. Power stones don't give mining stats, and Sky Mall changes daily and isn't on the API.
-        Pure blocks (Gold Blocks in the Mines of Divan, Diamond Blocks under the Royal Mines) use Block Fortune, and Mining Spread
-        breaks extra blocks around them (Mineral Armor gives +100 a piece, Glossy Mineral +150).
+        Dwarven O's Block Bran and the Mossy Box attribute aren't on the API either, so add their Block Fortune under "Other fortune".
+        Pure blocks (Gold Blocks in the Mines of Divan, Diamond Blocks under the Royal Mines) use Block Fortune.
+        Mining Spread breaks extra blocks next to the one you mine, on blocks, ores and Dwarven metals. Mineral Armor (+100 a piece),
+        Glossy Mineral (+150), the Fleet reforge and the Snail pet count on blocks only, the Goblin pet in the Mines of Divan,
+        and Armadillo and Mole on Hard Stone.
         Break time is ⌈30 × block strength ÷ speed⌉ ticks with a 4-tick minimum. Hard Stone breaks instantly at 30 × its strength;
         ores, gemstones, Dwarven metals and pure blocks need more than 60 ×.</p>
       <div class="controls"><button type="button" class="btn" id="gTune">Tune this plan for ${U.esc(b.name)}</button></div>
@@ -398,6 +426,9 @@ const Gear = (() => {
     else if (el.id === 'gNoMall') g.noMall = el.checked;
     else if (el.id === 'gSpeed') g.otherSpeed = Math.max(0, +el.value || 0);
     else if (el.id === 'gFort') g.otherFortune = Math.max(0, +el.value || 0);
+    else if (el.id === 'gSpread') g.otherSpread = Math.max(0, +el.value || 0);
+    else if (el.id === 'gSheer') g.sheer = el.checked;
+    else if (el.id === 'gSpeedStat') g.speedStat = Math.max(0, +el.value || 0);
     else if (el.dataset.slot) g.pick[el.dataset.slot] = el.value;
     else return;
     save();
