@@ -13,19 +13,20 @@ const Gear = (() => {
     ['mithril1', 'Mithril (grey)', 500, 'metal'], ['mithril2', 'Mithril (prismarine)', 800, 'metal'],
     ['mithril3', 'Mithril (blue wool)', 1500, 'metal'], ['titanium', 'Titanium', 2000, 'metal'],
     ['umber', 'Umber', 5600, 'metal'], ['tungsten', 'Tungsten', 5600, 'metal'], ['glacite', 'Glacite', 6000, 'metal'],
-    ['hardstone', 'Hard Stone', 50, 'block'],
+    ['hardstone', 'Hard Stone', 50, 'block'], ['goldblock', 'Gold Block (Mines of Divan)', 600, 'block'],
+    ['diamondblock', 'Diamond Block (Royal Mines)', 600, 'block'],
   ].map(([id, name, str, kind]) => ({ id, name, str, kind }));
   // Speed and fortune perks, and which blocks they count for.
   const SPEED_PERKS = { mining_speed: 'all', speedy_mineman: 'all', professional: 'gem', strong_arm: 'metal', eager_adventurer: 'shaft' };
   const FORTUNE_PERKS = { mining_fortune: 'all', fortunate_mineman: 'all', gem_lover: 'gem', metal_head: 'metal', blockhead: 'block', rags_to_riches: 'shaft' };
   const FORTUNE_NAME = { gem: 'Gemstone Fortune', metal: 'Dwarven Metal Fortune', block: 'Block Fortune' };
-  const EMPTY = { helmet: 'IRON_HELMET', chest: 'IRON_CHESTPLATE', legs: 'IRON_LEGGINGS', boots: 'IRON_BOOTS' };
+  const EMPTY = { helmet: 'IRON_HELMET', chest: 'IRON_CHESTPLATE', legs: 'IRON_LEGGINGS', boots: 'IRON_BOOTS', pet: 'BONE' };
   let open = null;    // slot whose item picker is showing
   const SLOTS = [
     ['tool', 'Pickaxe / drill', /\b(PICKAXE|DRILL|GAUNTLET)\b/], ['helmet', 'Helmet', /\bHELMET\b/],
     ['chest', 'Chestplate', /\bCHESTPLATE\b/], ['legs', 'Leggings', /\bLEGGINGS\b/], ['boots', 'Boots', /\bBOOTS\b/],
     ['necklace', 'Necklace', /\bNECKLACE\b/], ['cloak', 'Cloak', /\bCLOAK\b/], ['belt', 'Belt', /\bBELT\b/],
-    ['gloves', 'Gloves / bracelet', /\b(GLOVES|BRACELET)\b/],
+    ['gloves', 'Gloves / bracelet', /\b(GLOVES|BRACELET)\b/], ['pet', 'Pet', /(?!)/],
   ];
 
   // Cumulative skill XP for levels 1-60.
@@ -107,6 +108,7 @@ const Gear = (() => {
       for (let i = 0; i < 99; i++) { need += levels[i]; if (active.exp >= need) lv = i + 2; else break; }
       pet.xpLevel = lv;
     }
+    const allPets = ((d.member.pets_data || {}).pets) || [];
     const inv = d.member.inventory || {};
     const sources = [inv.inv_armor, inv.equipment_contents, inv.inv_contents, inv.ender_chest_contents, inv.wardrobe_contents,
       inv.personal_vault_contents, ...Object.values(inv.backpack_contents || {})];
@@ -133,6 +135,11 @@ const Gear = (() => {
       museumSrc = [...Object.values(mu.items || {}), ...(mu.special || [])].map(v => v.items).filter(x => x && x.data);
     } catch (e) { console.error(e); }
     const seen = new Set();
+    let worn = new Set();
+    for (const src of [inv.inv_armor, inv.equipment_contents]) {
+      if (!src || !src.data) continue;
+      try { for (const it of await U.nbtItems(src.data)) worn.add(String(it.ea.uuid || it.id)); } catch (e) { console.error(e); }
+    }
     for (const src of [...sources, ...museumSrc]) {
       if (!src || !src.data) continue;
       let items = [];
@@ -146,47 +153,77 @@ const Gear = (() => {
         const key = String(it.ea.uuid || it.id);
         if (seen.has(key)) continue;
         seen.add(key);
-        owned[slot[0]].push({ key, museum: museumSrc.includes(src), id: it.id, lore: it.lore, rawName: it.name || it.id, drill: /\bDRILL\b/.test(last), name: U.plain(it.name || it.id).replace(/[-]/g, '').trim(), ...st });
+        owned[slot[0]].push({ key, museum: museumSrc.includes(src), worn: worn.has(key), id: it.id, lore: it.lore, rawName: it.name || it.id, drill: /\bDRILL\b/.test(last), name: U.plain(it.name || it.id).replace(/[-]/g, '').trim(), ...st });
       }
+    }
+    // Pets that help mining (stats, abilities or a mining pet item), best rarity first.
+    const RAR = ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC'];
+    for (const p of allPets.slice().sort((a, c) => RAR.indexOf(c.tier) - RAR.indexOf(a.tier) || c.exp - a.exp)) {
+      if (!data || (!data.pets[p.type] && !HELD[p.heldItem])) continue;
+      const st = data.pets[p.type] ? petStats(p, data) : { name: U.pretty(p.type), rarity: p.tier, level: null, stats: {}, ab: [], held: p.heldItem };
+      if (!data.pets[p.type]) {
+        const levels = data.levels.slice(data.offset[p.tier] || 0);
+        let lv = 1, need = 0;
+        for (let i = 0; i < 99; i++) { need += levels[i]; if (p.exp >= need) lv = i + 2; else break; }
+        st.xpLevel = lv;
+      }
+      if (!st.level && !HELD[st.held] && !Object.keys(st.stats).some(k => /MINING|PRISTINE|GEMSTONE/.test(k)) && !st.ab.some(a => a.stat !== 'forfortune')) continue;
+      const col = { COMMON: 'f', UNCOMMON: 'a', RARE: '9', EPIC: '5', LEGENDARY: '6', MYTHIC: 'd' }[st.rarity] || 'f';
+      owned.pet.push({
+        key: p.uuid || `${p.type}:${p.tier}:${p.exp}`, id: 'PET_' + p.type, pet: st, worn: !!p.active,
+        rawName: `§7[Lvl ${st.level || st.xpLevel || '?'}] §${col}${st.name}`,
+        lore: [`§8${U.pretty(st.rarity)} pet`, ...Object.entries(st.stats).filter(([k]) => /MINING|PRISTINE|GEMSTONE/.test(k)).map(([k, v]) => `§7${U.pretty(k)}: §a+${U.num(v)}`),
+          ...(st.held ? [`§7Holding: §e${HELD[st.held] ? HELD[st.held].name : U.pretty(st.held.replace(/^PET_ITEM_/, ''))}`] : [])],
+        speed: 0, fortune: { all: 0, gem: 0, metal: 0, block: 0 }, pristine: 0,
+      });
     }
   }
 
   const fortuneFor = (x, b) => x.fortune.all + (x.fortune[b.kind] || 0);
+  /** What a pet adds while mining block b: { speed, fortune, pristine }. */
+  function petParts(pt, b, tool) {
+    let ps = pt.stats.MINING_SPEED || 0, pf = pt.stats.MINING_FORTUNE || 0, pr = pt.stats.PRISTINE || 0;
+    if (b.kind === 'gem') pf += pt.stats.GEMSTONE_FORTUNE || 0;
+    for (const a of pt.ab) {
+      const on = a.when === 'all' || (a.when === 'drill' && tool && tool.drill && b.kind === 'gem')
+        || (a.when === 'mithril' && b.id.startsWith('mithril')) || (a.when === 'shaft' && g.shaft);
+      if (!on || a.stat === 'forfortune') continue;
+      if (a.stat === 'speed') ps += a.v; else if (a.stat === 'pristine') pr += a.v; else pf += a.v;
+    }
+    const h = HELD[pt.held];
+    const lvl = pt.level || pt.xpLevel || 0;
+    if (h && h.per2) { ps += Math.floor(lvl / 2); pf += Math.floor(lvl / 2); }
+    if (h && h.titanium && b.id === 'titanium') pf += h.titanium;
+    return { speed: Math.round(ps), fortune: Math.round(pf), pristine: Math.round(pr * 100) / 100 };
+  }
   /** The item used for a slot: your pick, else the one with most speed (tool) or most fortune (everything else). */
   function chosen(slot, b) {
     const list = (owned && owned[slot]) || [];
     if (!list.length) return null;
     const pick = list.find(x => x.key === g.pick[slot]);
     if (pick) return pick;
-    const score = x => (slot === 'tool' ? x.speed * 10 + fortuneFor(x, b) : fortuneFor(x, b) * 10 + x.speed);
+    const score = slot === 'pet'
+      ? x => { const t = list === owned.pet ? chosen('tool', b) : null; const r = petParts(x.pet, b, t); return r.fortune * 10 + r.speed + r.pristine * 100; }
+      : x => (slot === 'tool' ? x.speed * 10 + fortuneFor(x, b) : fortuneFor(x, b) * 10 + x.speed);
     return list.slice().sort((a, c) => score(c) - score(a))[0];
   }
   function gearTotals(b) {
     let speed = 0, fortune = 0, pristine = 0;
     let gearPristine = 0;
     for (const [slot] of SLOTS) {
+      if (slot === 'pet') continue;
       const x = chosen(slot, b);
       if (x) { speed += x.speed; fortune += fortuneFor(x, b); pristine += x.pristine; gearPristine += x.pristine; }
     }
     const parts = { gear: { speed, fortune } };
     if (acc) { parts.acc = { speed: acc.speed, fortune: fortuneFor(acc, b) }; pristine += acc.pristine; }
     if (skill) parts.skill = { speed: 0, fortune: skill * SKILL_FORTUNE };
-    if (pet) {
-      const tool = chosen('tool', b);
-      let ps = pet.stats.MINING_SPEED || 0, pf = pet.stats.MINING_FORTUNE || 0;
-      if (b.kind === 'gem') pf += pet.stats.GEMSTONE_FORTUNE || 0;
-      pristine += pet.stats.PRISTINE || 0;
-      for (const a of pet.ab) {
-        const on = a.when === 'all' || (a.when === 'drill' && tool && tool.drill && b.kind === 'gem')
-          || (a.when === 'mithril' && b.id.startsWith('mithril')) || (a.when === 'shaft' && g.shaft);
-        if (!on || a.stat === 'forfortune') continue;
-        if (a.stat === 'speed') ps += a.v; else if (a.stat === 'pristine') pristine += a.v; else pf += a.v;
-      }
-      const h = HELD[pet.held];
-      const lvl = pet.level || pet.xpLevel || 0;
-      if (h && h.per2) { ps += Math.floor(lvl / 2); pf += Math.floor(lvl / 2); }
-      if (h && h.titanium && b.id === 'titanium') pf += h.titanium;
-      parts.pet = { speed: Math.round(ps), fortune: Math.round(pf) };
+    const usePet = owned && owned.pet.length ? chosen('pet', b) : null;
+    const pt = usePet ? usePet.pet : pet;
+    if (pt) {
+      const r = petParts(pt, b, chosen('tool', b));
+      pristine += r.pristine;
+      parts.pet = { speed: r.speed, fortune: r.fortune };
     }
     if (!g.noMall && g.mall === 'speed') parts.mall = { speed: 100, fortune: 0 };
     if (!g.noMall && g.mall === 'fortune') parts.mall = { speed: 0, fortune: 50 };
@@ -236,18 +273,19 @@ const Gear = (() => {
       return `<div class="mc-pick"><div class="mc-title">Pick your ${U.esc(SLOTS.find(x => x[0] === open)[1].toLowerCase())}</div>
         <div class="mc-grid">${owned[open].map(x => `<button type="button" class="mc-slot${cur && x.key === cur.key ? ' cur' : ''}" data-gchoose="${U.esc(x.key)}" data-gi="${U.esc(open)}|${U.esc(x.key)}">${img(x.id)}${x.museum ? '<span class="mc-mus">M</span>' : ''}</button>`).join('')}
         <button type="button" class="mc-slot${auto ? ' cur' : ''}" data-gchoose="" title="Pick the best one for me">${img('NETHER_STAR')}<span class="mc-n">A</span></button></div>
-        <p class="mc-gear-lbl">Hover for stats. The star picks the best one automatically${auto ? ' (on now)' : ''}. M means it is in your Museum.</p></div>`;
+        <p class="mc-gear-lbl">Hover for stats. The star picks the best one automatically${auto ? ' (on now)' : ''}. M = in your Museum.</p></div>`;
     };
     const slotRows = owned && SLOTS.some(([k]) => owned[k].length) ? `<div class="ht-grid mc-gearbox">
       <div class="mc-title">Your mining gear</div>
       <div class="mc-gear">
         <div><div class="grp col">${['helmet', 'chest', 'legs', 'boots'].map(slot).join('')}</div><div class="mc-gear-lbl">Armour</div></div>
         <div><div class="grp col">${['necklace', 'cloak', 'belt', 'gloves'].map(slot).join('')}</div><div class="mc-gear-lbl">Equipment</div></div>
-        <div><div class="grp col">${slot('tool')}</div><div class="mc-gear-lbl">Tool</div></div>
-        <div class="mc-gear-sum">${SLOTS.map(([k, label]) => { const c = chosen(k, b); return c ? `<div><span class="mc-gear-lbl">${U.esc(label)}</span> ${U.mcText(c.rawName)}${c.museum ? ' <span class="mc-gear-lbl">(in your Museum, borrow it)</span>' : ''}</div>` : ''; }).join('')}</div>
+        <div><div class="grp col">${slot('tool')}${slot('pet')}</div><div class="mc-gear-lbl">Tool / pet</div></div>
+        <div class="mc-gear-sum">${SLOTS.map(([k, label]) => { const c = chosen(k, b); return c ? `<div><span class="mc-gear-lbl">${U.esc(label)}</span> ${U.mcText(c.rawName)}${k !== 'tool' && !c.worn ? ' <span class="mc-equip">equip this</span>' : ''}</div>` : ''; }).join('')}</div>
       </div>${picker()}</div>` : '';
     const fortName = FORTUNE_NAME[b.kind] ? `Mining + ${FORTUNE_NAME[b.kind]}` : 'Mining Fortune';
-    const LABEL = { gear: 'gear', acc: 'accessories', skill: `Mining ${skill}`, pet: pet ? `${pet.name} pet` : 'pet', mall: 'Sky Mall', god: 'God Potion', other: 'other' };
+    const petNow = owned && owned.pet.length ? chosen('pet', b) : null;
+    const LABEL = { gear: 'gear', acc: 'accessories', skill: `Mining ${skill}`, pet: petNow ? `${petNow.pet.name} pet` : pet ? `${pet.name} pet` : 'pet', mall: 'Sky Mall', god: 'God Potion', other: 'other' };
     const pMaster = api.stat('mining_master', plan.mining_master || 0);
     const priParts = [...Object.entries(tot.pristineParts).filter(([, v]) => v).map(([k, v]) => `${U.num(v)} ${LABEL[k]}`),
       ...(pMaster ? [`${U.num(pMaster)} Mining Master`] : [])].join(' + ') || 'none yet';
@@ -256,16 +294,19 @@ const Gear = (() => {
     host.innerHTML = `
       <div class="controls">
         <label class="field">What you mine <select id="gBlock">${BLOCKS.map(x => opt(x.id, `${x.name} (strength ${U.num(x.str)})`, b.id)).join('')}</select></label>
+        <label><input type="checkbox" id="gShaft" ${g.shaft ? 'checked' : ''}> In a Glacite Mineshaft</label>
+      </div>
+      ${owned ? (slotRows ? slotRows
+        : '<p class="hint">No mining gear found on your profile. Turn on the Inventory API in SkyBlock settings, or type your stats under "Other".</p>')
+        : '<p class="hint">Log in to read your armour, equipment, pet and pickaxe or drill, or type your total stats under "Other".</p>'}
+      ${slotRows ? `<p class="hint">The best gear and pet you own for ${U.esc(b.name)} are picked for you. Anything marked "equip this" isn't on you right now.</p>` : ''}
+      <div class="controls">
         <label class="field">Other Mining Speed <input type="number" id="gSpeed" min="0" value="${g.otherSpeed || ''}" placeholder="0" style="width:120px"></label>
         <label class="field">Other fortune <input type="number" id="gFort" min="0" value="${g.otherFortune || ''}" placeholder="0" style="width:120px"></label>
-        <label><input type="checkbox" id="gShaft" ${g.shaft ? 'checked' : ''}> In a Glacite Mineshaft</label>
         <label><input type="checkbox" id="gNoMall" ${g.noMall ? 'checked' : ''}> Ignore Sky Mall</label>
         <label class="field">Today's Sky Mall <select id="gMall" ${g.noMall ? 'disabled' : ''}>${MALL.map(([v, l]) => opt(v, l, g.mall)).join('')}</select></label>
         <label><input type="checkbox" id="gGod" ${g.god ? 'checked' : ''}> God Potion (+${GOD_POT.speed} speed, +${GOD_POT.fortune} fortune)</label>
       </div>
-      ${owned ? (slotRows ? slotRows
-        : '<p class="hint">No mining gear found on your profile. Turn on the Inventory API in SkyBlock settings, or type your stats under "Other".</p>')
-        : '<p class="hint">Log in to read your armour, equipment and pickaxe or drill, or type your total stats under "Other".</p>'}
       <div class="stats">
         ${stat('Mining Speed', U.num(total), `${from('speed')} + ${U.num(pSpeed)} from this plan`)}
         ${stat(`${U.esc(b.name)} breaks in`, tk === Infinity ? '—' : tk === 1 ? 'Instantly' : `${tk} ticks`,
@@ -274,9 +315,10 @@ const Gear = (() => {
         ${b.kind === 'gem' || tot.pristine ? stat('Pristine', U.num(tot.pristine + pMaster), priParts) : ''}
       </div>
       ${tk !== Infinity && tk > 1 ? `<p class="hint">Any speed between ${U.num(keep)} and ${U.num(need)} breaks ${U.esc(b.name)} in the same ${tk} ticks, so powder spent on speed in that gap is wasted.</p>` : ''}
-      ${pet ? `<p class="hint">Active pet: <b>${U.esc(pet.name)}</b> (${U.esc(U.pretty(pet.rarity || ''))}${pet.level ? `, level ${pet.level}` : ''})${pet.held ? `, holding ${U.esc(HELD[pet.held] ? HELD[pet.held].name : U.pretty(pet.held.replace(/^PET_ITEM_/, '')))}` : ''}${!['MINING_SPEED', 'MINING_FORTUNE', 'PRISTINE', 'GEMSTONE_FORTUNE'].some(k => pet.stats[k]) && !pet.ab.some(x => x.stat !== 'forfortune') && !HELD[pet.held] ? '. Neither it nor its item has mining stats, so it adds nothing here.' : ''}${pet.ab.some(a => a.when === 'magma') ? '. Its Pristine bonus only works in the Magma Fields, so it isn\'t counted.' : ''}</p>` : ''}
+      ${pet && !petNow ? `<p class="hint">Active pet: <b>${U.esc(pet.name)}</b> (${U.esc(U.pretty(pet.rarity || ''))}${pet.level ? `, level ${pet.level}` : ''})${pet.held ? `, holding ${U.esc(HELD[pet.held] ? HELD[pet.held].name : U.pretty(pet.held.replace(/^PET_ITEM_/, '')))}` : ''}${!['MINING_SPEED', 'MINING_FORTUNE', 'PRISTINE', 'GEMSTONE_FORTUNE'].some(k => pet.stats[k]) && !pet.ab.some(x => x.stat !== 'forfortune') && !HELD[pet.held] ? '. Neither it nor its item has mining stats, so it adds nothing here.' : ''}${pet.ab.some(a => a.when === 'magma') ? '. Its Pristine bonus only works in the Magma Fields, so it isn\'t counted.' : ''}</p>` : ''}
       ${owned && !acc ? '<p class="hint">Your accessory bag is not on the API. Turn on the Inventory API to count it.</p>' : ''}
       <p class="hint">"Other" is for anything else, like a temporary buff. Power stones don't give mining stats, and Sky Mall changes daily and isn't on the API.
+        Pure blocks (Gold Blocks in the Mines of Divan, Diamond Blocks under the Royal Mines) use Block Fortune.
         Break time is ⌈30 × block strength ÷ speed⌉ ticks, with a 4-tick minimum unless the block breaks instantly.</p>
       <div class="controls"><button type="button" class="btn" id="gTune">Tune this plan for ${U.esc(b.name)}</button></div>
       <div id="gMsg"></div>`;

@@ -35,6 +35,15 @@ const PRESETS = [
     },
   },
   {
+    id: 'blocks', name: 'Block mining', src: MINING_GUIDE, srcName: 'SkyKings mining guide',
+    desc: 'Pure blocks like the Gold Blocks in the Mines of Divan or the Diamond Blocks under the Royal Mines. Block Fortune (Blockhead) on top of general speed and fortune.',
+    ability: 'pickobulus',
+    levels: {
+      mining_speed: 'max', mining_fortune: 'max', blockhead: 'max', efficient_miner: 'max', speedy_mineman: 'max',
+      fortunate_mineman: 'max', sky_mall: 1, daily_powder: 1, pickobulus: 1, core_of_the_mountain: 10,
+    },
+  },
+  {
     id: 'glacite', name: 'Glacite & mineshafts',
     desc: 'Glacite Tunnels and Mineshafts: more mineshafts, more corpses and loot, cold resistance, and Dwarven Metal speed and fortune.',
     ability: 'pickobulus',

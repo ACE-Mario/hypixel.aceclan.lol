@@ -87,6 +87,11 @@ const ForestGear = (() => {
       museumSrc = [...Object.values(mu.items || {}), ...(mu.special || [])].map(v => v.items).filter(x => x && x.data);
     } catch (e) { console.error(e); }
     const seen = new Set();
+    const worn = new Set();
+    for (const src of [inv.inv_armor, inv.equipment_contents]) {
+      if (!src || !src.data) continue;
+      try { for (const it of await U.nbtItems(src.data)) worn.add(String(it.ea.uuid || it.id)); } catch (e) { console.error(e); }
+    }
     for (const src of [...sources, ...museumSrc]) {
       if (!src || !src.data) continue;
       let items = [];
@@ -100,7 +105,7 @@ const ForestGear = (() => {
         const key = String(it.ea.uuid || it.id);
         if (seen.has(key)) continue;
         seen.add(key);
-        owned[slot[0]].push({ key, museum: museumSrc.includes(src), id: it.id, lore: it.lore, rawName: it.name || it.id, ...st });
+        owned[slot[0]].push({ key, museum: museumSrc.includes(src), worn: worn.has(key), id: it.id, lore: it.lore, rawName: it.name || it.id, ...st });
       }
     }
   }
@@ -182,7 +187,7 @@ const ForestGear = (() => {
       return `<div class="mc-pick"><div class="mc-title">Pick your ${U.esc(SLOTS.find(x => x[0] === open)[1].toLowerCase())}</div>
         <div class="mc-grid">${owned[open].map(x => `<button type="button" class="mc-slot${cur && x.key === cur.key ? ' cur' : ''}" data-fchoose="${U.esc(x.key)}" data-fi="${U.esc(open)}|${U.esc(x.key)}">${img(x.id)}${x.museum ? '<span class="mc-mus">M</span>' : ''}</button>`).join('')}
         <button type="button" class="mc-slot${auto ? ' cur' : ''}" data-fchoose="" title="Pick the best one for me">${img('NETHER_STAR')}<span class="mc-n">A</span></button></div>
-        <p class="mc-gear-lbl">Hover for stats. The star picks the best one automatically${auto ? ' (on now)' : ''}. M means it is in your Museum.</p></div>`;
+        <p class="mc-gear-lbl">Hover for stats. The star picks the best one automatically${auto ? ' (on now)' : ''}. M = in your Museum.</p></div>`;
     };
     const any = owned && SLOTS.some(([k]) => owned[k].length);
     const box = any ? `<div class="ht-grid mc-gearbox">
@@ -191,7 +196,7 @@ const ForestGear = (() => {
         <div><div class="grp col">${['helmet', 'chest', 'legs', 'boots'].map(slot).join('')}</div><div class="mc-gear-lbl">Armour</div></div>
         <div><div class="grp col">${['necklace', 'cloak', 'belt', 'gloves'].map(slot).join('')}</div><div class="mc-gear-lbl">Equipment</div></div>
         <div><div class="grp col">${slot('tool')}</div><div class="mc-gear-lbl">Axe</div></div>
-        <div class="mc-gear-sum">${SLOTS.map(([k, label]) => { const c = chosen(k); return c ? `<div><span class="mc-gear-lbl">${U.esc(label)}</span> ${U.mcText(c.rawName)}${c.museum ? ' <span class="mc-gear-lbl">(in your Museum, borrow it)</span>' : ''}</div>` : ''; }).join('')}</div>
+        <div class="mc-gear-sum">${SLOTS.map(([k, label]) => { const c = chosen(k); return c ? `<div><span class="mc-gear-lbl">${U.esc(label)}</span> ${U.mcText(c.rawName)}${k !== 'tool' && !c.worn ? ' <span class="mc-equip">equip this</span>' : ''}</div>` : ''; }).join('')}</div>
       </div>${picker()}</div>` : '';
     const LABEL = { gear: 'gear', acc: 'accessories', skill: `Foraging ${skill}`, pet: pet ? `${pet.name} pet` : 'pet', other: 'other' };
     const from = k => Object.entries(tot.parts).filter(([, x]) => x[k]).map(([n, x]) => `${U.num(x[k])} ${LABEL[n]}`).join(' + ') || '0';

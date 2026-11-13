@@ -578,3 +578,4 @@ button.mc-slot { cursor: pointer; }
 .ht-pw.ok { color: #55ff55; }
 @media (max-width: 860px) { .ht-layout { grid-template-columns: minmax(0, 1fr); } .ht-detail { min-width: 0; } }
 .mc-slot .mc-mus { position: absolute; left: 2px; top: 1px; font: 700 10px/1 monospace; color: #ffaa00; text-shadow: 1px 1px 0 #3f2a00; }
+.mc-equip { font-size: 11px; color: #ffaa00; border: 1px solid #ffaa0066; border-radius: 3px; padding: 0 4px; margin-left: 4px; white-space: nowrap; }
