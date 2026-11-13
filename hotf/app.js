@@ -60,4 +60,6 @@ Tree.page({
   icons: { npi: ['WOOD_BUTTON', 'WOOD', 'LOG'], api: ['DEAD_BUSH', 'SAPLING'], map: { MANGROVE_WOOD: 'MANGROVE_LOG', MANGROVE_ROOTS: 'MANGROVE_LOG' }, tierOn: 'LEAVES', tierOff: 'DEAD_BUSH' },
   title: 'Heart of the Forest',
   presets: PRESETS.map(p => ({ ...p, src: WIKI, srcName: 'perk data on the SkyBlock wiki' })), powderOf,
+  onRender: api => ForestGear.render(api),
+  onProfile: d => ForestGear.load(d),
 }).catch(err => { console.error(err); document.querySelector('#grid').innerHTML = '<p class="empty-note">Could not load the tree. Try refreshing.</p>'; });

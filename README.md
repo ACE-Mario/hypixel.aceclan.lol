@@ -22,6 +22,9 @@ ACE Clan's Hypixel SkyBlock tools. This is a separate site from the main clan si
   and the cheapest tiers to craft next. Each tier's Plan button opens it in the Minion Planner.
 - `hotm/` and `hotf/`: Heart of the Mountain / Heart of the Forest planners. Both use `shared/tree.js`
   with preset builds defined in each page's `app.js`; they read your tree and powder from the profile.
+  `hotm/gear.js` and `hotf/gear.js` read your gear (inventory, wardrobe, storage and Museum), accessories,
+  skill and pet for the mining / foraging stat panels.
+- `scripts/clear_icon_bg.py`: makes the solid square background on some 16px item icons transparent.
 - `config.js`: site settings, including the shared Hypixel API key every visitor uses. Development keys
   expire, so edit this file (on GitHub: Edit button) whenever the key changes.
 - `shared/`: the shared stylesheet (`site.css`) and helpers (`sb.js`: SkyBlock calendar, formatting).

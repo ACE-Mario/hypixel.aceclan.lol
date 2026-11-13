@@ -12,6 +12,9 @@ import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MINING_STATS = {'MINING_SPEED', 'MINING_FORTUNE', 'PRISTINE', 'GEMSTONE_FORTUNE'}
+# Foraging pets (for the HotF gear panel). Speed and Strength feed Forest Speed / Forest Strength.
+FORAGING_STATS = {'FORAGING_FORTUNE', 'SWEEP'}
+EXTRA_STATS = {'SPEED', 'STRENGTH'}
 # Abilities that add a mining stat: pet -> [(index into otherNums, stat, when)], read from the pets' lore.
 ABILITIES = {
     'SILVERFISH': [(2, 'speed', 'all')],          # Dexterity: +X Mining Speed
@@ -19,6 +22,7 @@ ABILITIES = {
     'MITHRIL_GOLEM': [(0, 'speed', 'mithril')],    # Mithril Affinity: +X Mining Speed when mining Mithril
     'GLACITE_GOLEM': [(1, 'fortune', 'shaft')],    # Iceborn: +X Mining Fortune in Glacite Mineshafts
     'BAL': [(0, 'pristine', 'magma')],             # Furnace: +X Pristine in the Magma Fields
+    'MONKEY': [(0, 'forfortune', 'all')],          # Treeborn: +X Foraging Fortune
 }
 
 
@@ -38,9 +42,10 @@ def main(zpath):
             for lv, v in levels.items():
                 if not lv.isdigit():
                     continue
-                stats = {k: n for k, n in v.get('statNums', {}).items() if k in MINING_STATS}
-                if stats:
+                sn = v.get('statNums', {})
+                if any(k in MINING_STATS or k in FORAGING_STATS for k in sn):
                     keep = True
+                stats = {k: n for k, n in sn.items() if k in MINING_STATS or k in FORAGING_STATS or k in EXTRA_STATS}
                 pts[lv] = {'s': stats, 'o': v.get('otherNums', [])}
             data[rarity] = pts
         if keep:
@@ -52,7 +57,7 @@ def main(zpath):
            'abilities': ABILITIES, 'pets': out}
     with open(os.path.join(ROOT, 'data', 'pets.json'), 'w', encoding='utf8') as f:
         json.dump(res, f, ensure_ascii=False, separators=(',', ':'))
-    print(len(out), 'mining pets:', ', '.join(sorted(out)))
+    print(len(out), 'mining/foraging pets:', ', '.join(sorted(out)))
 
 
 if __name__ == '__main__':

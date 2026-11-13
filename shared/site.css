@@ -577,3 +577,4 @@ button.mc-slot { cursor: pointer; }
 .ht-pw.bad { color: #ff6b6b; }
 .ht-pw.ok { color: #55ff55; }
 @media (max-width: 860px) { .ht-layout { grid-template-columns: minmax(0, 1fr); } .ht-detail { min-width: 0; } }
+.mc-slot .mc-mus { position: absolute; left: 2px; top: 1px; font: 700 10px/1 monospace; color: #ffaa00; text-shadow: 1px 1px 0 #3f2a00; }

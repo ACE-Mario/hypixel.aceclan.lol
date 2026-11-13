@@ -126,8 +126,14 @@ const Gear = (() => {
         for (const k of Object.keys(acc.fortune)) acc.fortune[k] += st.fortune[k];
       }
     }
+    // Armour donated to the Museum counts too (you can borrow it back).
+    let museumSrc = [];
+    try {
+      const mu = (await U.myMuseum()).museum || {};
+      museumSrc = [...Object.values(mu.items || {}), ...(mu.special || [])].map(v => v.items).filter(x => x && x.data);
+    } catch (e) { console.error(e); }
     const seen = new Set();
-    for (const src of sources) {
+    for (const src of [...sources, ...museumSrc]) {
       if (!src || !src.data) continue;
       let items = [];
       try { items = await U.nbtItems(src.data); } catch (e) { console.error(e); }
@@ -140,7 +146,7 @@ const Gear = (() => {
         const key = String(it.ea.uuid || it.id);
         if (seen.has(key)) continue;
         seen.add(key);
-        owned[slot[0]].push({ key, id: it.id, lore: it.lore, rawName: it.name || it.id, drill: /\bDRILL\b/.test(last), name: U.plain(it.name || it.id).replace(/[-]/g, '').trim(), ...st });
+        owned[slot[0]].push({ key, museum: museumSrc.includes(src), id: it.id, lore: it.lore, rawName: it.name || it.id, drill: /\bDRILL\b/.test(last), name: U.plain(it.name || it.id).replace(/[-]/g, '').trim(), ...st });
       }
     }
   }
@@ -173,7 +179,7 @@ const Gear = (() => {
       for (const a of pet.ab) {
         const on = a.when === 'all' || (a.when === 'drill' && tool && tool.drill && b.kind === 'gem')
           || (a.when === 'mithril' && b.id.startsWith('mithril')) || (a.when === 'shaft' && g.shaft);
-        if (!on) continue;
+        if (!on || a.stat === 'forfortune') continue;
         if (a.stat === 'speed') ps += a.v; else if (a.stat === 'pristine') pristine += a.v; else pf += a.v;
       }
       const h = HELD[pet.held];
@@ -222,15 +228,15 @@ const Gear = (() => {
       const cur = chosen(k, b);
       const label = SLOTS.find(x => x[0] === k)[1];
       return `<button type="button" class="mc-slot${cur ? '' : ' none'}${open === k ? ' sel' : ''}" data-gslot="${k}" ${cur ? `data-gi="${U.esc(k)}|${U.esc(cur.key)}"` : `title="${U.esc(label)}: nothing found"`} ${list.length ? '' : 'disabled'}>
-        ${cur ? img(cur.id) : EMPTY[k] ? img(EMPTY[k]) : ''}${list.length > 1 ? `<span class="mc-n">${list.length}</span>` : ''}</button>`;
+        ${cur ? img(cur.id) : EMPTY[k] ? img(EMPTY[k]) : ''}${cur && cur.museum ? '<span class="mc-mus" title="In your Museum">M</span>' : ''}${list.length > 1 ? `<span class="mc-n">${list.length}</span>` : ''}</button>`;
     };
     const picker = () => {
       if (!open || !owned || !owned[open] || !owned[open].length) return '';
       const cur = chosen(open, b), auto = !g.pick[open];
       return `<div class="mc-pick"><div class="mc-title">Pick your ${U.esc(SLOTS.find(x => x[0] === open)[1].toLowerCase())}</div>
-        <div class="mc-grid">${owned[open].map(x => `<button type="button" class="mc-slot${cur && x.key === cur.key ? ' cur' : ''}" data-gchoose="${U.esc(x.key)}" data-gi="${U.esc(open)}|${U.esc(x.key)}">${img(x.id)}</button>`).join('')}
+        <div class="mc-grid">${owned[open].map(x => `<button type="button" class="mc-slot${cur && x.key === cur.key ? ' cur' : ''}" data-gchoose="${U.esc(x.key)}" data-gi="${U.esc(open)}|${U.esc(x.key)}">${img(x.id)}${x.museum ? '<span class="mc-mus">M</span>' : ''}</button>`).join('')}
         <button type="button" class="mc-slot${auto ? ' cur' : ''}" data-gchoose="" title="Pick the best one for me">${img('NETHER_STAR')}<span class="mc-n">A</span></button></div>
-        <p class="mc-gear-lbl">Hover for stats. The star picks the best one automatically${auto ? ' (on now)' : ''}.</p></div>`;
+        <p class="mc-gear-lbl">Hover for stats. The star picks the best one automatically${auto ? ' (on now)' : ''}. M means it is in your Museum.</p></div>`;
     };
     const slotRows = owned && SLOTS.some(([k]) => owned[k].length) ? `<div class="ht-grid mc-gearbox">
       <div class="mc-title">Your mining gear</div>
@@ -238,7 +244,7 @@ const Gear = (() => {
         <div><div class="grp col">${['helmet', 'chest', 'legs', 'boots'].map(slot).join('')}</div><div class="mc-gear-lbl">Armour</div></div>
         <div><div class="grp col">${['necklace', 'cloak', 'belt', 'gloves'].map(slot).join('')}</div><div class="mc-gear-lbl">Equipment</div></div>
         <div><div class="grp col">${slot('tool')}</div><div class="mc-gear-lbl">Tool</div></div>
-        <div class="mc-gear-sum">${SLOTS.map(([k, label]) => { const c = chosen(k, b); return c ? `<div><span class="mc-gear-lbl">${U.esc(label)}</span> ${U.mcText(c.rawName)}</div>` : ''; }).join('')}</div>
+        <div class="mc-gear-sum">${SLOTS.map(([k, label]) => { const c = chosen(k, b); return c ? `<div><span class="mc-gear-lbl">${U.esc(label)}</span> ${U.mcText(c.rawName)}${c.museum ? ' <span class="mc-gear-lbl">(in your Museum, borrow it)</span>' : ''}</div>` : ''; }).join('')}</div>
       </div>${picker()}</div>` : '';
     const fortName = FORTUNE_NAME[b.kind] ? `Mining + ${FORTUNE_NAME[b.kind]}` : 'Mining Fortune';
     const LABEL = { gear: 'gear', acc: 'accessories', skill: `Mining ${skill}`, pet: pet ? `${pet.name} pet` : 'pet', mall: 'Sky Mall', god: 'God Potion', other: 'other' };
@@ -268,7 +274,7 @@ const Gear = (() => {
         ${b.kind === 'gem' || tot.pristine ? stat('Pristine', U.num(tot.pristine + pMaster), priParts) : ''}
       </div>
       ${tk !== Infinity && tk > 1 ? `<p class="hint">Any speed between ${U.num(keep)} and ${U.num(need)} breaks ${U.esc(b.name)} in the same ${tk} ticks, so powder spent on speed in that gap is wasted.</p>` : ''}
-      ${pet ? `<p class="hint">Active pet: <b>${U.esc(pet.name)}</b> (${U.esc(U.pretty(pet.rarity || ''))}${pet.level ? `, level ${pet.level}` : ''})${pet.held ? `, holding ${U.esc(HELD[pet.held] ? HELD[pet.held].name : U.pretty(pet.held.replace(/^PET_ITEM_/, '')))}` : ''}${pet.level === null && !HELD[pet.held] ? '. Neither it nor its item has mining stats, so it adds nothing here.' : ''}${pet.ab.some(a => a.when === 'magma') ? '. Its Pristine bonus only works in the Magma Fields, so it isn\'t counted.' : ''}</p>` : ''}
+      ${pet ? `<p class="hint">Active pet: <b>${U.esc(pet.name)}</b> (${U.esc(U.pretty(pet.rarity || ''))}${pet.level ? `, level ${pet.level}` : ''})${pet.held ? `, holding ${U.esc(HELD[pet.held] ? HELD[pet.held].name : U.pretty(pet.held.replace(/^PET_ITEM_/, '')))}` : ''}${!['MINING_SPEED', 'MINING_FORTUNE', 'PRISTINE', 'GEMSTONE_FORTUNE'].some(k => pet.stats[k]) && !pet.ab.some(x => x.stat !== 'forfortune') && !HELD[pet.held] ? '. Neither it nor its item has mining stats, so it adds nothing here.' : ''}${pet.ab.some(a => a.when === 'magma') ? '. Its Pristine bonus only works in the Magma Fields, so it isn\'t counted.' : ''}</p>` : ''}
       ${owned && !acc ? '<p class="hint">Your accessory bag is not on the API. Turn on the Inventory API to count it.</p>' : ''}
       <p class="hint">"Other" is for anything else, like a temporary buff. Power stones don't give mining stats, and Sky Mall changes daily and isn't on the API.
         Break time is ⌈30 × block strength ÷ speed⌉ ticks, with a 4-tick minimum unless the block breaks instantly.</p>
