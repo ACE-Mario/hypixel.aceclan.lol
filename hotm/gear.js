@@ -36,7 +36,7 @@ const Gear = (() => {
   const GOD_POT = { speed: 200, fortune: 25 }; // Haste IV and Spelunker V
 
   let g = U.readLS(KEY, null) || {};
-  g = { block: g.block || 'ruby', shaft: !!g.shaft, otherSpeed: g.otherSpeed || 0, otherFortune: g.otherFortune || 0, pick: g.pick || {}, god: g.god !== false };
+  g = { block: g.block || 'ruby', shaft: !!g.shaft, otherSpeed: g.otherSpeed || 0, otherFortune: g.otherFortune || 0, pick: g.pick || {}, god: g.god !== false, mall: g.mall || '' };
   let owned = null;   // slot -> [{ key, name, speed, fortune: {all, gem, metal, block}, pristine }]
   let api = null;
   let acc = null;     // accessory bag totals { speed, fortune, pristine, n }
@@ -44,6 +44,14 @@ const Gear = (() => {
   let pet = null;     // active pet { name, level, rarity, stats: {MINING_SPEED...}, other: [], ab: [] }
   const petData = fetch('../data/pets.json').then(r => r.json()).catch(() => null);
   const PRISTINE_PERKS = { mining_master: 'gem' };
+  // Sky Mall: one random buff each SkyBlock day (not on the API, so you pick today's).
+  const MALL = [['', 'Not counted'], ['speed', '+100 Mining Speed'], ['fortune', '+50 Mining Fortune'], ['powder', '+15% Powder'],
+    ['cooldown', '-20% ability cooldowns'], ['goblin', '10x Golden / Diamond Goblins'], ['titanium', '5x Titanium drops']];
+  // Pet items that add mining stats.
+  const HELD = {
+    PET_ITEM_QUICK_CLAW: { name: 'Quick Claw', per2: true },          // +1 speed and fortune every 2 pet levels
+    PET_ITEM_TITANIUM_MINECART: { name: 'Titanium Minecart', titanium: 33.3 },
+  };
   const save = () => U.writeLS(KEY, g);
   const blockOf = () => BLOCKS.find(b => b.id === g.block) || BLOCKS[0];
   const applies = (where, b) => where === 'all' || where === b.kind || (where === 'shaft' && g.shaft);
@@ -83,13 +91,20 @@ const Gear = (() => {
     for (const k of Object.keys(hi.s)) stats[k] = lerp(lo.s[k] || 0, hi.s[k]);
     const other = hi.o.map((v, i) => lerp(lo.o[i] || 0, v));
     const ab = (data.abilities[p.type] || []).map(([i, stat, when]) => ({ v: other[i] || 0, stat, when }));
-    return { name: U.pretty(p.type), rarity, level, stats, other, ab };
+    return { name: U.pretty(p.type), rarity, level, stats, other, ab, held: p.heldItem || null };
   }
 
   async function load(d) {
     const data = await petData;
     const active = (((d.member.pets_data || {}).pets) || []).find(p => p.active);
-    pet = active && data ? petStats(active, data) : active ? { name: U.pretty(active.type), rarity: active.tier, level: null, stats: {}, ab: [] } : null;
+    pet = active && data ? petStats(active, data) : active ? { name: U.pretty(active.type), rarity: active.tier, level: null, stats: {}, ab: [], held: active.heldItem || null } : null;
+    // Pets without mining stats still need a level for Quick Claw.
+    if (pet && pet.level === null && data && active) {
+      const levels = data.levels.slice(data.offset[active.tier] || 0);
+      let lv = 1, need = 0;
+      for (let i = 0; i < 99; i++) { need += levels[i]; if (active.exp >= need) lv = i + 2; else break; }
+      pet.xpLevel = lv;
+    }
     const inv = d.member.inventory || {};
     const sources = [inv.inv_armor, inv.equipment_contents, inv.inv_contents, inv.ender_chest_contents, inv.wardrobe_contents,
       inv.personal_vault_contents, ...Object.values(inv.backpack_contents || {})];
@@ -159,8 +174,14 @@ const Gear = (() => {
         if (!on) continue;
         if (a.stat === 'speed') ps += a.v; else if (a.stat === 'pristine') pristine += a.v; else pf += a.v;
       }
+      const h = HELD[pet.held];
+      const lvl = pet.level || pet.xpLevel || 0;
+      if (h && h.per2) { ps += Math.floor(lvl / 2); pf += Math.floor(lvl / 2); }
+      if (h && h.titanium && b.id === 'titanium') pf += h.titanium;
       parts.pet = { speed: Math.round(ps), fortune: Math.round(pf) };
     }
+    if (g.mall === 'speed') parts.mall = { speed: 100, fortune: 0 };
+    if (g.mall === 'fortune') parts.mall = { speed: 0, fortune: 50 };
     if (g.god) parts.god = { speed: GOD_POT.speed, fortune: GOD_POT.fortune };
     parts.other = { speed: +g.otherSpeed || 0, fortune: +g.otherFortune || 0 };
     const sum = k => Object.values(parts).reduce((n, x) => n + x[k], 0);
@@ -201,7 +222,7 @@ const Gear = (() => {
         `${x.name} (${x.speed ? U.num(x.speed) + ' speed, ' : ''}${U.num(fortuneFor(x, b))} fortune)`, cur && cur.key)).join('')}</select></label>`;
     }).join('');
     const fortName = FORTUNE_NAME[b.kind] ? `Mining + ${FORTUNE_NAME[b.kind]}` : 'Mining Fortune';
-    const LABEL = { gear: 'gear', acc: 'accessories', skill: `Mining ${skill}`, pet: pet ? `${pet.name} pet` : 'pet', god: 'God Potion', other: 'other' };
+    const LABEL = { gear: 'gear', acc: 'accessories', skill: `Mining ${skill}`, pet: pet ? `${pet.name} pet` : 'pet', mall: 'Sky Mall', god: 'God Potion', other: 'other' };
     const pMaster = api.stat('mining_master', plan.mining_master || 0);
     const priParts = [...Object.entries(tot.pristineParts).filter(([, v]) => v).map(([k, v]) => `${U.num(v)} ${LABEL[k]}`),
       ...(pMaster ? [`${U.num(pMaster)} Mining Master`] : [])].join(' + ') || 'none yet';
@@ -213,6 +234,7 @@ const Gear = (() => {
         <label class="field">Other Mining Speed <input type="number" id="gSpeed" min="0" value="${g.otherSpeed || ''}" placeholder="0" style="width:120px"></label>
         <label class="field">Other fortune <input type="number" id="gFort" min="0" value="${g.otherFortune || ''}" placeholder="0" style="width:120px"></label>
         <label><input type="checkbox" id="gShaft" ${g.shaft ? 'checked' : ''}> In a Glacite Mineshaft</label>
+        <label class="field">Today's Sky Mall <select id="gMall">${MALL.map(([v, l]) => opt(v, l, g.mall)).join('')}</select></label>
         <label><input type="checkbox" id="gGod" ${g.god ? 'checked' : ''}> God Potion (+${GOD_POT.speed} speed, +${GOD_POT.fortune} fortune)</label>
       </div>
       ${owned ? (slotRows ? `<div class="controls ht-gear">${slotRows}</div>`
@@ -226,9 +248,9 @@ const Gear = (() => {
         ${b.kind === 'gem' || tot.pristine ? stat('Pristine', U.num(tot.pristine + pMaster), priParts) : ''}
       </div>
       ${tk !== Infinity && tk > 1 ? `<p class="hint">Any speed between ${U.num(keep)} and ${U.num(need)} breaks ${U.esc(b.name)} in the same ${tk} ticks, so powder spent on speed in that gap is wasted.</p>` : ''}
-      ${pet ? `<p class="hint">Active pet: <b>${U.esc(pet.name)}</b> (${U.esc(U.pretty(pet.rarity || ''))}${pet.level ? `, level ${pet.level}` : ''})${pet.level === null ? '. It has no mining stats, so it adds nothing here.' : ''}${pet.ab.some(a => a.when === 'magma') ? '. Its Pristine bonus only works in the Magma Fields, so it isn\'t counted.' : ''}</p>` : ''}
+      ${pet ? `<p class="hint">Active pet: <b>${U.esc(pet.name)}</b> (${U.esc(U.pretty(pet.rarity || ''))}${pet.level ? `, level ${pet.level}` : ''})${pet.held ? `, holding ${U.esc(HELD[pet.held] ? HELD[pet.held].name : U.pretty(pet.held.replace(/^PET_ITEM_/, '')))}` : ''}${pet.level === null && !HELD[pet.held] ? '. Neither it nor its item has mining stats, so it adds nothing here.' : ''}${pet.ab.some(a => a.when === 'magma') ? '. Its Pristine bonus only works in the Magma Fields, so it isn\'t counted.' : ''}</p>` : ''}
       ${owned && !acc ? '<p class="hint">Your accessory bag is not on the API. Turn on the Inventory API to count it.</p>' : ''}
-      <p class="hint">"Other" is what the API can't show: your power stone, your pet's held item, and the Sky Mall buff.
+      <p class="hint">"Other" is for anything else, like a temporary buff. Power stones don't give mining stats, and Sky Mall changes daily and isn't on the API.
         Break time is ⌈30 × block strength ÷ speed⌉ ticks, with a 4-tick minimum unless the block breaks instantly.</p>
       <div class="controls"><button type="button" class="btn" id="gTune">Tune this plan for ${U.esc(b.name)}</button></div>
       <div id="gMsg"></div>`;
@@ -282,6 +304,7 @@ const Gear = (() => {
     if (el.id === 'gBlock') g.block = el.value;
     else if (el.id === 'gShaft') g.shaft = el.checked;
     else if (el.id === 'gGod') g.god = el.checked;
+    else if (el.id === 'gMall') g.mall = el.value;
     else if (el.id === 'gSpeed') g.otherSpeed = Math.max(0, +el.value || 0);
     else if (el.id === 'gFort') g.otherFortune = Math.max(0, +el.value || 0);
     else if (el.dataset.slot) g.pick[el.dataset.slot] = el.value;
