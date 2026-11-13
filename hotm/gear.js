@@ -244,7 +244,11 @@ const Gear = (() => {
     const pick = list.find(x => x.key === g.pick[slot]);
     if (pick) return pick;
     const score = slot === 'pet'
-      ? x => { const t = list === owned.pet ? chosen('tool', b) : null; const r = petParts(x.pet, b, t); return (r.fortune + r.spread * 10) * 10 + r.speed + r.pristine * 100; }
+      ? x => {
+        // Powder grinding needs Speed to move through Hard Stone; Snail turns Speed above 100 into Block Fortune, so it's never picked there.
+        if (b.id === 'hardstone' && x.id === 'PET_SNAIL') return -Infinity;
+        const t = list === owned.pet ? chosen('tool', b) : null; const r = petParts(x.pet, b, t); return (r.fortune + r.spread * 10) * 10 + r.speed + r.pristine * 100;
+      }
       : x => {
         const v = valueFor(x, b);
         return slot === 'tool' ? x.speed * 10 + v : v * 10 + x.speed;
@@ -383,7 +387,8 @@ const Gear = (() => {
         Pure blocks (Gold Blocks in the Mines of Divan, Diamond Blocks under the Royal Mines) use Block Fortune.
         Mining Spread breaks extra blocks next to the one you mine, on blocks, ores and Dwarven metals. Mineral Armor (+100 a piece),
         Glossy Mineral (+150), the Fleet reforge and the Snail pet count on blocks only, the Goblin pet in the Mines of Divan,
-        and Armadillo and Mole on Hard Stone.
+        and Armadillo and Mole on Hard Stone. For Hard Stone the Snail is never picked: it turns your Speed above 100 into Block Fortune,
+        and powder grinding needs Speed to move through the tunnels (Armadillo also tunnels through blocks for you).
         Break time is ⌈30 × block strength ÷ speed⌉ ticks with a 4-tick minimum. Hard Stone breaks instantly at 30 × its strength;
         ores, gemstones, Dwarven metals and pure blocks need more than 60 ×.</p>
       <div class="controls"><button type="button" class="btn" id="gTune">Tune this plan for ${U.esc(b.name)}</button></div>
