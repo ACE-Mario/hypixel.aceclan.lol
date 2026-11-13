@@ -86,7 +86,8 @@ const Gear = (() => {
       pristine: num(/^Pristine: \+([\d,.]+)/),
       spread: num(/^Mining Spread: \+([\d,.]+)/),
       // Spread that only counts on blocks: Mineral armour, the Fleet reforge ("towards Blocks").
-      spreadBlock: num(/\+([\d,.]+)\D{0,2}Mining Spread (?:on Ores|towards Blocks)/) || fixed.spread,
+      // Worn Mineral pieces each show the whole set's tiered total (e.g. +400 on all four), so use the per-piece value.
+      spreadBlock: set ? fixed.spread : num(/\+([\d,.]+)\D{0,2}Mining Spread towards Blocks/),
     };
   }
 
