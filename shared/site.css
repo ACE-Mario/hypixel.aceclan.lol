@@ -579,3 +579,26 @@ button.mc-slot { cursor: pointer; }
 @media (max-width: 860px) { .ht-layout { grid-template-columns: minmax(0, 1fr); } .ht-detail { min-width: 0; } }
 .mc-slot .mc-mus { position: absolute; left: 2px; top: 1px; font: 700 10px/1 monospace; color: #ffaa00; text-shadow: 1px 1px 0 #3f2a00; }
 .mc-equip { font-size: 11px; color: #ffaa00; border: 1px solid #ffaa0066; border-radius: 3px; padding: 0 4px; margin-left: 4px; white-space: nowrap; }
+/* What to get next */
+.tabs .tab img { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pixelated; }
+.pg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-top: 12px; }
+.pg-track h4 { margin: 0 0 8px; }
+.pg-have { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.pg-have img { width: 20px; height: 20px; image-rendering: pixelated; }
+.pg-item { display: flex; gap: 10px; align-items: flex-start; }
+.pg-icon { width: 46px; flex: 0 0 46px; }
+.pg-body { min-width: 0; flex: 1; }
+.pg-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--accent2); }
+.pg-name { font-weight: 700; margin: 1px 0 3px; }
+.pg-name a { text-decoration: none; }
+.pg-stats { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.pg-done { color: var(--accent2); margin: 4px 0; }
+.pg-after { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+.pg-after > span:first-child { margin-right: 4px; }
+.pg-mini { width: 28px; flex: 0 0 28px; display: inline-block; }
+.pg-quick { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.pg-quick h4 { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; }
+.pg-quick h4 img { width: 20px; height: 20px; image-rendering: pixelated; }
+.pg-q { display: flex; gap: 8px; align-items: center; padding: 4px 0; text-decoration: none; color: inherit; font-size: 14px; }
+.pg-q small { color: var(--muted); }
+.pg-q:hover { color: var(--text); background: rgba(255, 255, 255, .03); }

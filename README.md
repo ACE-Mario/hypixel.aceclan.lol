@@ -24,6 +24,10 @@ ACE Clan's Hypixel SkyBlock tools. This is a separate site from the main clan si
   with preset builds defined in each page's `app.js`; they read your tree and powder from the profile.
   `hotm/gear.js` and `hotf/gear.js` read your gear (inventory, wardrobe, storage and Museum), accessories,
   skill and pet for the mining / foraging stat panels.
+- `progress/`: What to Get Next. Gear ladders per skill from `data/progress.json`, built by
+  `scripts/extract_progress.py` (ladders are listed at the top of that script; equipment ladders are built
+  from every item with that skill's stats). It reads inventory, storage, wardrobe, pets and Museum items.
+- `scripts/pet_icons.py`: makes `icons/PET_<TYPE>.png` pet head icons from the NEU pet skins.
 - `scripts/clear_icon_bg.py`: makes the solid square background on some 16px item icons transparent.
 - `config.js`: site settings, including the shared Hypixel API key every visitor uses. Development keys
   expire, so edit this file (on GitHub: Edit button) whenever the key changes.
