@@ -510,3 +510,15 @@ button.chip:hover { border-color: var(--muted); color: var(--text); }
 .un-scroll { overflow-x: auto; }
 @media (max-width: 640px) { .un-scroll td:nth-child(3), .un-scroll th:nth-child(3) { display: none; } }
 .ht-gear .field select { max-width: 260px; }
+.ht-reset { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--danger); border-radius: var(--radius); padding: 10px 14px; margin: 8px 0; }
+.ht-reset.ht-then { border-left-color: var(--accent2); }
+.ht-reset span { color: var(--muted); font-size: 14px; }
+.ht-tier-h { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin: 12px 0 6px; }
+.ht-steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
+.ht-step { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 10px; border-radius: 8px; background: var(--bg2); border: 1px solid var(--line); color: var(--text); text-decoration: none; }
+.ht-step:hover { border-color: var(--muted); }
+.ht-step .nm { font-weight: 600; }
+.ht-step .to { font-weight: 700; color: #9fd8b7; text-align: right; }
+.ht-step.max .to { color: #f3c969; }
+.ht-step .to small { font-weight: 500; color: var(--muted); }
+.ht-step .cost { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }

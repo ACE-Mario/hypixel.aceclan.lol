@@ -272,15 +272,33 @@ const Tree = (() => {
     }
 
     function renderList() {
-      const rowsUp = ids.filter(id => s.plan[id] !== s.cur[id]).sort((a, b) => perks[a].tier - perks[b].tier || perks[a].x - perks[b].x);
-      if (!rowsUp.length) { $('#todo').innerHTML = '<p class="empty-note">Your plan matches your tree. Pick a build above or click a perk to change it.</p>'; return; }
-      $('#todo').innerHTML = `<table class="table mini"><thead><tr><th>Perk</th><th>Tier</th><th>Level</th><th>Cost</th></tr></thead><tbody>
-        ${rowsUp.map(id => {
-          const a = s.cur[id], b = s.plan[id];
-          return `<tr><td><a href="#" data-go="${id}">${U.esc(perks[id].name)}</a></td><td>${perks[id].tier}</td><td>${a} → <b>${b}</b></td>
-            <td>${b > a ? costLine(t.cost(id, a, b, s)) + (a === 0 && !perks[id].core ? ' + 1 token' : '') : '<span class="muted">Lower it (refunded on reset)</span>'}</td></tr>`;
-        }).join('')}</tbody></table>
-        <p class="hint">Lowering perks means resetting the tree in game, which gives back the powder and tokens spent on perks${t.coreId ? ' but not on ' + U.esc(perks[t.coreId].name) : ''}.</p>`;
+      const changed = ids.filter(id => s.plan[id] !== s.cur[id]);
+      if (!changed.length) { $('#todo').innerHTML = '<p class="empty-note">Your plan matches your tree. Pick a build above or click a perk to change it.</p>'; return; }
+      // Anything lowered means a reset, which refunds every perk (not the core), so everything is levelled from 0.
+      const reset = changed.some(id => s.plan[id] < s.cur[id] && !perks[id].core);
+      const from = id => (reset && !perks[id].core ? 0 : s.cur[id]);
+      const order = (a, b) => perks[a].tier - perks[b].tier || perks[a].x - perks[b].x;
+      const up = ids.filter(id => s.plan[id] > from(id)).sort(order);
+      const total = {};
+      for (const id of up) t.cost(id, from(id), s.plan[id], s, total);
+      const refund = {};
+      if (reset) for (const id of ids) if (!perks[id].core) t.cost(id, 0, s.cur[id], s, refund);
+      const card = id => {
+        const p = perks[id], a = from(id), b = s.plan[id];
+        const lvl = p.max === 1 || b === 1 ? 'Unlock' : b >= p.max ? `Max <small>(${b})</small>` : `Level ${b}`;
+        const c = t.cost(id, a, b, s);
+        return `<a href="#" class="ht-step${b >= p.max ? ' max' : ''}" data-go="${id}">
+          <span class="nm">${U.esc(p.name)}</span><span class="to">${lvl}</span>
+          <span class="cost">${a > 0 ? `from ${a} · ` : ''}${Object.keys(c).length ? costLine(c) : 'free'}</span></a>`;
+      };
+      const tiers = [...new Set(up.map(id => perks[id].tier))];
+      $('#todo').innerHTML = `
+        ${reset ? `<div class="ht-reset"><b>1. Refund all</b><span>Reset your tree in game. You get back every token${Object.keys(refund).length ? ` and ${costLine(refund)}` : ''}${t.coreId ? ` (${U.esc(perks[t.coreId].name)} stays)` : ''}.</span></div>` : ''}
+        <div class="ht-reset ht-then"><b>${reset ? '2. Then level these' : 'Level these'}</b>
+          <span>Total: ${costLine(total)}. Go tier by tier so each perk is connected.</span></div>
+        ${tiers.map(tr => `<div class="ht-tier-h">Tier ${tr}</div>
+          <div class="ht-steps">${up.filter(id => perks[id].tier === tr).map(card).join('')}</div>`).join('')}
+        ${s.ability && s.ability !== s.curAbility ? `<p class="hint">Then select <b>${U.esc(perks[s.ability].name)}</b> as your ability.</p>` : ''}`;
     }
 
     function renderPresets() {
