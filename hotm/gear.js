@@ -198,6 +198,22 @@ const Gear = (() => {
   }
 
   const fortuneFor = (x, b) => x.fortune.all + (x.fortune[b.kind] || 0);
+  /** What a piece is worth for block b, apart from speed: fortune for that block, plus Pristine on gemstones
+      (1 Pristine is roughly worth 50 fortune) and Mining Spread on blocks and metals (each 100 is about one extra block). */
+  const valueFor = (x, b) => fortuneFor(x, b) + spreadFor(x, b) * 10 + (b.kind === 'gem' ? (x.pristine || 0) * 50 : 0);
+  // A preset picks what you mine, so the gear is chosen for it (keeps your pick if it's already the right kind).
+  const PRESET_BLOCK = { gems: ['gem', 'ruby'], blocks: [['goldblock', 'diamondblock'], 'goldblock'], powder: [['hardstone'], 'hardstone'],
+    mithril: [['mithril1', 'mithril2', 'mithril3', 'titanium'], 'mithril1'], glacite: [['umber', 'tungsten', 'glacite'], 'glacite'] };
+  function preset(id) {
+    const m = PRESET_BLOCK[id];
+    if (!m) return;
+    const cur = blockOf();
+    if (Array.isArray(m[0]) ? !m[0].includes(cur.id) : cur.kind !== m[0]) g.block = m[1];
+    if (id === 'glacite') g.shaft = true;
+    delete g.pick.helmet; delete g.pick.chest; delete g.pick.legs; delete g.pick.boots; delete g.pick.pet; delete g.pick.tool;
+    open = null;
+    save();
+  }
   /** What a pet adds while mining block b: { speed, fortune, pristine, spread }. */
   function petParts(pt, b, tool) {
     let ps = pt.stats.MINING_SPEED || 0, pf = pt.stats.MINING_FORTUNE || 0, pr = pt.stats.PRISTINE || 0, sp = 0;
@@ -230,9 +246,8 @@ const Gear = (() => {
     const score = slot === 'pet'
       ? x => { const t = list === owned.pet ? chosen('tool', b) : null; const r = petParts(x.pet, b, t); return (r.fortune + r.spread * 10) * 10 + r.speed + r.pristine * 100; }
       : x => {
-        // Each 100 spread is roughly one extra block per break, so it beats the same amount of fortune by a lot.
-        const sp = spreadFor(x, b) * 10;
-        return slot === 'tool' ? x.speed * 10 + fortuneFor(x, b) + sp : (fortuneFor(x, b) + sp) * 10 + x.speed;
+        const v = valueFor(x, b);
+        return slot === 'tool' ? x.speed * 10 + v : v * 10 + x.speed;
       };
     return list.slice().sort((a, c) => score(c) - score(a))[0];
   }
@@ -352,9 +367,9 @@ const Gear = (() => {
         ${stat(`${U.esc(b.name)} breaks in`, tk === Infinity ? '—' : tk === 1 ? 'Instantly' : `${tk} ticks`,
           tk === Infinity ? 'Add your speed first' : better ? `${better === 1 ? 'Instant' : better + ' ticks'} at ${U.num(need)} speed (${U.num(need - total)} more)` : 'As fast as it gets')}
         ${stat(fortName, U.num(tot.fortune + pFort), `${from('fortune')} + ${U.num(pFort)} from this plan`)}
-        ${b.kind === 'gem' || tot.pristine ? stat('Pristine', U.num(tot.pristine + pMaster), priParts) : ''}
+        ${b.kind === 'gem' ? stat('Pristine', U.num(tot.pristine + pMaster), priParts) : ''}
         ${hasSpread(b) ? (() => {
-          const pSpread = perkSum(SPREAD_PERKS, b, plan);
+          const pSpread = Math.round(perkSum(SPREAD_PERKS, b, plan));
           const all = Object.values(tot.spreadParts).reduce((n, v) => n + v, 0) + pSpread;
           const parts = [...Object.entries(tot.spreadParts).filter(([, v]) => v).map(([k, v]) => `${U.num(v)} ${LABEL[k]}`), `${U.num(pSpread)} from this plan`];
           return stat('Mining Spread', U.num(all), parts.join(' + '));
@@ -465,5 +480,5 @@ const Gear = (() => {
     $('#gMsg').innerHTML = `<p class="hint">${msg}</p>`;
   });
 
-  return { load, render };
+  return { load, render, preset };
 })();

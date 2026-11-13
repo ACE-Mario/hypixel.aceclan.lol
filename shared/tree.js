@@ -403,6 +403,7 @@ const Tree = (() => {
       }
       s.plan = levels;
       s.ability = p.ability && levels[p.ability] ? p.ability : abilities.find(a => levels[a]) || '';
+      if (cfg.onPreset) cfg.onPreset(p);
       render();
       $('#grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }

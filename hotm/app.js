@@ -78,5 +78,6 @@ Tree.page({
   title: 'Heart of the Mountain',
   presets: PRESETS, powderOf,
   onRender: api => Gear.render(api),
+  onPreset: p => Gear.preset(p.id),
   onProfile: d => Gear.load(d),
 }).catch(err => { console.error(err); document.querySelector('#grid').innerHTML = '<p class="empty-note">Could not load the tree. Try refreshing.</p>'; });
