@@ -18,6 +18,10 @@ ACE Clan's Hypixel SkyBlock tools. This is a separate site from the main clan si
   line by default) and how to get each one. Reads the Accessory Bag when logged in.
 - `museum/`: Museum Tracker. Donations from the Museum API, XP per item, and each item's raw materials
   priced live from the Bazaar so the cheapest donations are easy to find.
+- `uniques/`: Unique Minions. Unique minion crafts (whole co-op), minion slots and the next threshold,
+  and the cheapest tiers to craft next. Each tier's Plan button opens it in the Minion Planner.
+- `hotm/` and `hotf/`: Heart of the Mountain / Heart of the Forest planners. Both use `shared/tree.js`
+  with preset builds defined in each page's `app.js`; they read your tree and powder from the profile.
 - `config.js`: site settings, including the shared Hypixel API key every visitor uses. Development keys
   expire, so edit this file (on GitHub: Edit button) whenever the key changes.
 - `shared/`: the shared stylesheet (`site.css`) and helpers (`sb.js`: SkyBlock calendar, formatting).
@@ -36,6 +40,10 @@ ACE Clan's Hypixel SkyBlock tools. This is a separate site from the main clan si
 
 - `data/museum.json`: museum items, XP and armour sets (Hypixel items API) with recipes broken down to
   raw materials (NEU). Refresh with `python scripts/extract_museum.py NotEnoughUpdates-REPO-master.zip`.
+
+- `data/hotm.json` and `data/hotf.json`: tree layouts, costs and stats (NEU). Heart of the Forest costs
+  aren't in NEU, so `scripts/extract_trees.py` fills them in from the wiki (update `HOTF_EXP` there if
+  they change). Refresh with `python scripts/extract_trees.py NotEnoughUpdates-REPO-master.zip`.
 
 It's a static site with no build step, hosted on GitHub Pages with the custom domain in `CNAME`.
 

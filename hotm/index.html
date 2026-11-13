@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HotM Planner · ACE Hypixel</title>
+  <meta name="description" content="Plan your Hypixel SkyBlock Heart of the Mountain tree: pick a build for gemstones, mithril, powder or glacite and see the tokens and powder it costs.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/site.css?v=20261112p">
+</head>
+<body>
+  <div class="sitebar">
+    <div class="wrap sitebar-inner">
+      <a class="ace" href="../">ACE<span>.</span> <small>Hypixel</small></a>
+      <nav><a href="../">All tools</a></nav>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <h2>HotM Planner</h2>
+        <p>Plan your Heart of the Mountain. Start from a build for what you mine, then tweak it and see what it costs.</p>
+      </div>
+      <div class="clock">
+        <div class="k">HotM tier</div>
+        <div class="v" id="tierNow">10</div>
+        <div class="hint" id="tierInfo"></div>
+      </div>
+    </div>
+
+    <div id="profileBar"></div>
+
+    <h3 class="section-h">Builds</h3>
+    <div id="presets" class="cards ht-presets"></div>
+
+    <h3 class="section-h">Your tree</h3>
+    <div class="controls">
+      <label class="field">Tier <select id="tier"></select></label>
+      <button type="button" class="btn ghost" id="mine">Back to my tree</button>
+      <button type="button" class="btn ghost danger" id="clear">Empty the plan</button>
+    </div>
+    <div id="stats" class="stats"></div>
+    <div id="warn"></div>
+    <div class="ht-layout">
+      <div id="grid" class="ht-grid"></div>
+      <div id="detail" class="card ht-detail"></div>
+    </div>
+    <p class="hint">Click a perk to change it. Green is levelled, gold is maxed, a purple edge means you'd raise it from where it is now, and red means it's locked or not connected.</p>
+
+    <h3 class="section-h">What to do</h3>
+    <div id="todo"></div>
+    <div class="controls" id="haveRow"></div>
+    <p class="hint">Powder you own is your unspent powder plus what's already in your tree, since a reset gives it back. It fills in from your profile.</p>
+  </main>
+
+  <footer class="wrap foot">Tree layout and costs from the <a href="https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO" target="_blank" rel="noopener">NotEnoughUpdates repo</a> and the <a href="https://hypixelskyblock.minecraft.wiki/w/Heart_of_the_Mountain" target="_blank" rel="noopener">SkyBlock wiki</a>. Not affiliated with Hypixel or Mojang.</footer>
+  <script src="../config.js"></script>
+  <script src="../shared/sb.js?v=20261112p"></script>
+  <script src="../shared/tree.js?v=20261112p"></script>
+  <script src="app.js?v=20261112p"></script>
+</body>
+</html>

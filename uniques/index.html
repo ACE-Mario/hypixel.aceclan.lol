@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Unique Minions · ACE Hypixel</title>
+  <meta name="description" content="Count your unique Hypixel SkyBlock minion crafts, see how many more you need for the next minion slot, and find the cheapest tiers you haven't made yet.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/site.css?v=20261112p">
+</head>
+<body>
+  <div class="sitebar">
+    <div class="wrap sitebar-inner">
+      <a class="ace" href="../">ACE<span>.</span> <small>Hypixel</small></a>
+      <nav><a href="../">All tools</a></nav>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <h2>Unique Minions</h2>
+        <p>Every minion tier you craft for the first time counts towards more minion slots. See where you are and the cheapest crafts to get the next slot.</p>
+      </div>
+      <div class="clock">
+        <div class="k">Minion slots</div>
+        <div class="v" id="slots">5</div>
+        <div class="hint" id="slotInfo"></div>
+      </div>
+    </div>
+
+    <div id="profileBar"></div>
+    <div id="stats" class="stats"></div>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="next" class="tab">Cheapest next crafts</button>
+      <button role="tab" data-tab="all" class="tab">All minions</button>
+    </nav>
+
+    <section class="panel">
+      <div class="toolbar shard-filters">
+        <input id="q" type="search" placeholder="Search minions…" autocomplete="off">
+        <label><input type="checkbox" id="canNow"> Only ones my collections allow</label>
+      </div>
+      <p class="hint" id="count"></p>
+      <div id="list"></div>
+      <p class="hint" id="note"></p>
+    </section>
+  </main>
+
+  <footer class="wrap foot">Minion recipes from the <a href="https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO" target="_blank" rel="noopener">NotEnoughUpdates repo</a>, slot thresholds from the <a href="https://hypixelskyblock.minecraft.wiki/w/Minions#Minion_Slots" target="_blank" rel="noopener">SkyBlock wiki</a>. Not affiliated with Hypixel or Mojang.</footer>
+  <script src="../config.js"></script>
+  <script src="../shared/sb.js?v=20261112p"></script>
+  <script src="app.js?v=20261112p"></script>
+</body>
+</html>

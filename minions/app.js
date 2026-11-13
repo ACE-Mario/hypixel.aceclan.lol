@@ -112,24 +112,25 @@ function renderUpgrades() {
   $('#upgrades').innerHTML = `<div class="cards">${st.rows.map((row, i) => {
     const m = byId.get(row.id);
     const max = m.tiers[m.tiers.length - 1].tier;
-    const target = Math.min(max, Math.max(row.tier + 1, row.target || row.tier + 1));
-    if (row.tier >= max) return `<div class="card"><h3>${U.esc(m.name)} ${U.roman(row.tier)}</h3><div class="muted">Already max tier. 🎉</div></div>`;
+    const first = row.craft1 ? row.tier : row.tier + 1;   // craft1: plan crafting this tier itself
+    const target = row.craft1 ? row.tier : Math.min(max, Math.max(row.tier + 1, row.target || row.tier + 1));
+    if (!row.craft1 && row.tier >= max) return `<div class="card"><h3>${U.esc(m.name)} ${U.roman(row.tier)}</h3><div class="muted">Already max tier. 🎉</div></div>`;
     const sum = new Map(); const reqs = []; const uncraftable = [];
-    for (let t = row.tier + 1; t <= target; t++) {
+    for (let t = first; t <= target; t++) {
       const tt = m.tiers.find(x => x.tier === t);
       if (!tt || !tt.in.length) { uncraftable.push(U.roman(t)); continue; }
       for (const [id, n] of tt.in) sum.set(id, (sum.get(id) || 0) + n);
       if (tt.req) reqs.push(tt.req);
     }
     return `<div class="card">
-      <h3>${U.esc(m.name)}: ${U.roman(row.tier)} →
-        <select data-k="target" data-i="${i}">${opts(m.tiers.filter(t => t.tier > row.tier).map(t => [t.tier, U.roman(t.tier)]), target)}</select>
+      <h3>${U.esc(m.name)}: ${row.craft1 ? `craft tier ${U.roman(row.tier)}` : `${U.roman(row.tier)} →
+        <select data-k="target" data-i="${i}">${opts(m.tiers.filter(t => t.tier > row.tier).map(t => [t.tier, U.roman(t.tier)]), target)}</select>`}
         ${row.count > 1 ? `<span class="muted">× ${row.count} minions</span>` : ''}</h3>
       ${sum.size ? `<div>${[...sum].map(([id, n]) => `${U.num(n * row.count)} ${ingName(id)}`).join(' · ')}</div>` : ''}
       ${reqs.length ? `<div class="chips" style="margin-top:6px">${[...new Set(reqs)].map(r => `<span class="chip req">🔒 ${U.esc(r)}</span>`).join('')}</div>` : ''}
       ${uncraftable.length ? `<p class="hint">Tier ${uncraftable.join(', ')} isn't crafted with a normal recipe, so it isn't included.</p>` : ''}
       <p class="hint"><a href="../ironman/?item=${encodeURIComponent(m.id + '_GENERATOR_' + target)}&qty=${row.count}">Break it down in the Ironman planner →</a>
-        (enter your current ${U.roman(row.tier)} minions as "have" there)</p>
+        ${row.craft1 ? '' : `(enter your current ${U.roman(row.tier)} minions as "have" there)`}</p>
     </div>`;
   }).join('')}</div>`;
 }
@@ -173,14 +174,14 @@ function bind() {
     const r = st.rows[i];
     if (!r || !k) return;
     const v = e.target.value;
-    if (k === 'tier') { r.tier = +v; r.target = 0; }
+    if (k === 'tier') { r.tier = +v; r.target = 0; delete r.craft1; }
     else if (k === 'count') r.count = Math.max(1, parseInt(v, 10) || 1);
     else if (k === 'drops') r.drops = Math.max(0, +v || 0);
     else if (k === 'fuel') r.fuel = +v;
     else if (k === 'storage') r.storage = +v;
     else if (k === 'upg0') r.upg[0] = v;
     else if (k === 'upg1') r.upg[1] = v;
-    else if (k === 'target') r.target = +v;
+    else if (k === 'target') { r.target = +v; delete r.craft1; }
     save(); render();
   };
   $('#list').addEventListener('change', onChange);
@@ -191,10 +192,35 @@ function bind() {
   });
 }
 
+/** ?plan=ID&tier=N (from the Unique Minions page): add the minion and show what that tier costs. */
+function planFromUrl() {
+  const q = new URLSearchParams(location.search);
+  const m = byId.get(q.get('plan') || '');
+  if (!m) return false;
+  const tier = Math.max(1, Math.min(m.tiers[m.tiers.length - 1].tier, +q.get('tier') || 1));
+  history.replaceState(null, '', location.pathname);
+  let row = st.rows.find(r => r.id === m.id);
+  if (!row) {
+    const prev = st.rows[st.rows.length - 1];
+    row = {
+      id: m.id, tier: 1, count: 1, drops: DEFAULT_DROPS[m.id] || 1,
+      fuel: prev ? prev.fuel : 0, storage: prev ? prev.storage : 0,
+      upg: prev ? prev.upg.map(k => (k === 'super_compactor' || k === 'dwarven_compactor') ? defaultCompactor(m.id) : k)
+        : [defaultCompactor(m.id), 'none'],
+    };
+    st.rows.push(row);
+  }
+  if (tier === 1) { row.tier = 1; row.craft1 = true; row.target = 0; }
+  else { row.tier = tier - 1; row.target = tier; delete row.craft1; }
+  return true;
+}
+
 fetch('../data/minions.json').then(r => r.json()).then(d => {
   minions = d.minions; names = d.names;
   byId = new Map(minions.map(m => [m.id, m]));
   st.rows = st.rows.filter(r => byId.has(r.id));
+  const planned = planFromUrl();
   save();
   bind(); render();
+  if (planned) $('#upgrades').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }).catch(() => { $('#list').innerHTML = '<p class="empty-note">Couldn\'t load minion data.</p>'; });
