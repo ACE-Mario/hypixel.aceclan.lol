@@ -26,10 +26,21 @@ const Gear = (() => {
     ['gloves', 'Gloves / bracelet', /\b(GLOVES|BRACELET)\b/],
   ];
 
+  // Cumulative skill XP for levels 1-60.
+  const SKILL_XP = [50, 175, 375, 675, 1175, 1925, 2925, 4425, 6425, 9925, 14925, 22425, 32425, 47425, 67425, 97425,
+    147425, 222425, 322425, 522425, 822425, 1222425, 1722425, 2322425, 3022425, 3822425, 4722425, 5722425, 6822425,
+    8022425, 9322425, 10722425, 12222425, 13822425, 15522425, 17322425, 19222425, 21222425, 23322425, 25522425,
+    27822425, 30222425, 32722425, 35322425, 38072425, 40972425, 44072425, 47472425, 51172425, 55172425, 59472425,
+    64072425, 68972425, 74172425, 79672425, 85472425, 91572425, 97972425, 104672425, 111672425];
+  const SKILL_FORTUNE = 4;                   // Mining Fortune per Mining level
+  const GOD_POT = { speed: 200, fortune: 25 }; // Haste IV and Spelunker V
+
   let g = U.readLS(KEY, null) || {};
-  g = { block: g.block || 'ruby', shaft: !!g.shaft, otherSpeed: g.otherSpeed || 0, otherFortune: g.otherFortune || 0, pick: g.pick || {} };
+  g = { block: g.block || 'ruby', shaft: !!g.shaft, otherSpeed: g.otherSpeed || 0, otherFortune: g.otherFortune || 0, pick: g.pick || {}, god: g.god !== false };
   let owned = null;   // slot -> [{ key, name, speed, fortune: {all, gem, metal, block}, pristine }]
   let api = null;
+  let acc = null;     // accessory bag totals { speed, fortune, pristine, n }
+  let skill = null;   // Mining skill level
   const save = () => U.writeLS(KEY, g);
   const blockOf = () => BLOCKS.find(b => b.id === g.block) || BLOCKS[0];
   const applies = (where, b) => where === 'all' || where === b.kind || (where === 'shaft' && g.shaft);
@@ -55,6 +66,21 @@ const Gear = (() => {
     const sources = [inv.inv_armor, inv.equipment_contents, inv.inv_contents, inv.ender_chest_contents, inv.wardrobe_contents,
       inv.personal_vault_contents, ...Object.values(inv.backpack_contents || {})];
     owned = Object.fromEntries(SLOTS.map(([k]) => [k, []]));
+    const xp = ((d.member.player_data || {}).experience || {}).SKILL_MINING;
+    skill = xp === undefined ? null : SKILL_XP.filter(n => xp >= n).length;
+    const bag = (inv.bag_contents || {}).talisman_bag;
+    acc = null;
+    if (bag && bag.data) {
+      acc = { speed: 0, fortune: { all: 0, gem: 0, metal: 0, block: 0 }, pristine: 0, n: 0 };
+      let list = [];
+      try { list = await U.nbtItems(bag.data); } catch (e) { console.error(e); }
+      for (const it of list) {
+        const st = itemStats(it);
+        if (!st.speed && !st.fortune.all && !st.fortune.gem && !st.fortune.metal && !st.fortune.block && !st.pristine) continue;
+        acc.n++; acc.speed += st.speed; acc.pristine += st.pristine;
+        for (const k of Object.keys(acc.fortune)) acc.fortune[k] += st.fortune[k];
+      }
+    }
     const seen = new Set();
     for (const src of sources) {
       if (!src || !src.data) continue;
@@ -90,7 +116,13 @@ const Gear = (() => {
       const x = chosen(slot, b);
       if (x) { speed += x.speed; fortune += fortuneFor(x, b); pristine += x.pristine; }
     }
-    return { speed: speed + (+g.otherSpeed || 0), fortune: fortune + (+g.otherFortune || 0), pristine };
+    const parts = { gear: { speed, fortune } };
+    if (acc) { parts.acc = { speed: acc.speed, fortune: fortuneFor(acc, b) }; pristine += acc.pristine; }
+    if (skill) parts.skill = { speed: 0, fortune: skill * SKILL_FORTUNE };
+    if (g.god) parts.god = { speed: GOD_POT.speed, fortune: GOD_POT.fortune };
+    parts.other = { speed: +g.otherSpeed || 0, fortune: +g.otherFortune || 0 };
+    const sum = k => Object.values(parts).reduce((n, x) => n + x[k], 0);
+    return { speed: sum('speed'), fortune: sum('fortune'), pristine, parts };
   }
   const perkSum = (perks, b, levels) => Object.entries(perks).reduce((n, [id, where]) => n + (applies(where, b) ? api.stat(id, levels[id] || 0) : 0), 0);
 
@@ -125,6 +157,8 @@ const Gear = (() => {
         `${x.name} (${x.speed ? U.num(x.speed) + ' speed, ' : ''}${U.num(fortuneFor(x, b))} fortune)`, cur && cur.key)).join('')}</select></label>`;
     }).join('');
     const fortName = FORTUNE_NAME[b.kind] ? `Mining + ${FORTUNE_NAME[b.kind]}` : 'Mining Fortune';
+    const LABEL = { gear: 'gear', acc: 'accessories', skill: `Mining ${skill}`, god: 'God Potion', other: 'other' };
+    const from = k => Object.entries(tot.parts).filter(([, x]) => x[k]).map(([n, x]) => `${U.num(x[k])} ${LABEL[n]}`).join(' + ') || '0';
     const stat = (k, v, hint) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div><div class="hint" style="margin:4px 0 0">${hint}</div></div>`;
     host.innerHTML = `
       <div class="controls">
@@ -132,19 +166,21 @@ const Gear = (() => {
         <label class="field">Other Mining Speed <input type="number" id="gSpeed" min="0" value="${g.otherSpeed || ''}" placeholder="0" style="width:120px"></label>
         <label class="field">Other fortune <input type="number" id="gFort" min="0" value="${g.otherFortune || ''}" placeholder="0" style="width:120px"></label>
         <label><input type="checkbox" id="gShaft" ${g.shaft ? 'checked' : ''}> In a Glacite Mineshaft</label>
+        <label><input type="checkbox" id="gGod" ${g.god ? 'checked' : ''}> God Potion (+${GOD_POT.speed} speed, +${GOD_POT.fortune} fortune)</label>
       </div>
       ${owned ? (slotRows ? `<div class="controls ht-gear">${slotRows}</div>`
         : '<p class="hint">No mining gear found on your profile. Turn on the Inventory API in SkyBlock settings, or type your stats under "Other".</p>')
         : '<p class="hint">Log in to read your armour, equipment and pickaxe or drill, or type your total stats under "Other".</p>'}
       <div class="stats">
-        ${stat('Mining Speed', U.num(total), `${U.num(tot.speed)} gear + ${U.num(pSpeed)} from this plan`)}
+        ${stat('Mining Speed', U.num(total), `${from('speed')} + ${U.num(pSpeed)} from this plan`)}
         ${stat(`${U.esc(b.name)} breaks in`, tk === Infinity ? '—' : tk === 1 ? 'Instantly' : `${tk} ticks`,
           tk === Infinity ? 'Add your speed first' : better ? `${better === 1 ? 'Instant' : better + ' ticks'} at ${U.num(need)} speed (${U.num(need - total)} more)` : 'As fast as it gets')}
-        ${stat(fortName, U.num(tot.fortune + pFort), `${U.num(tot.fortune)} gear + ${U.num(pFort)} from this plan`)}
-        ${tot.pristine ? stat('Pristine', U.num(tot.pristine + api.stat('mining_master', plan.mining_master || 0)), 'gear + Mining Master') : ''}
+        ${stat(fortName, U.num(tot.fortune + pFort), `${from('fortune')} + ${U.num(pFort)} from this plan`)}
+        ${tot.pristine ? stat('Pristine', U.num(tot.pristine + api.stat('mining_master', plan.mining_master || 0)), 'gear, accessories and Mining Master') : ''}
       </div>
       ${tk !== Infinity && tk > 1 ? `<p class="hint">Any speed between ${U.num(keep)} and ${U.num(need)} breaks ${U.esc(b.name)} in the same ${tk} ticks, so powder spent on speed in that gap is wasted.</p>` : ''}
-      <p class="hint">"Other" is what the API can't show: pets, potions, accessories, and skill or Sky Mall bonuses.
+      ${owned && !acc ? '<p class="hint">Your accessory bag is not on the API. Turn on the Inventory API to count it.</p>' : ''}
+      <p class="hint">"Other" is what the API can't show: your pet, your power stone, and the Sky Mall buff.
         Break time is ⌈30 × block strength ÷ speed⌉ ticks, with a 4-tick minimum unless the block breaks instantly.</p>
       <div class="controls"><button type="button" class="btn" id="gTune">Tune this plan for ${U.esc(b.name)}</button></div>
       <div id="gMsg"></div>`;
@@ -197,6 +233,7 @@ const Gear = (() => {
     if (!el.closest || !el.closest('#gear')) return;
     if (el.id === 'gBlock') g.block = el.value;
     else if (el.id === 'gShaft') g.shaft = el.checked;
+    else if (el.id === 'gGod') g.god = el.checked;
     else if (el.id === 'gSpeed') g.otherSpeed = Math.max(0, +el.value || 0);
     else if (el.id === 'gFort') g.otherFortune = Math.max(0, +el.value || 0);
     else if (el.dataset.slot) g.pick[el.dataset.slot] = el.value;
