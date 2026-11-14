@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Clan Map · ACE Hypixel</title>
+  <meta name="description" content="See where clan members are in Hypixel SkyBlock right now, on a top-down map of each island.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/site.css?v=20261114w">
+  <style>
+    .status { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--line);
+              border-radius: 999px; background: var(--card); color: var(--muted); font-size: 14px; white-space: nowrap; }
+    .status i { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+    .status.live i { background: var(--accent2); box-shadow: 0 0 0 3px rgba(63,191,127,.25); }
+    .status.off i { background: var(--danger); }
+    .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 12px; }
+    .tab { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px;
+           padding: 5px 12px; font: inherit; font-size: 14px; cursor: pointer; display: inline-flex; gap: 7px; align-items: center; }
+    .tab:hover { border-color: var(--accent); }
+    .tab[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #160d2e; font-weight: 600; }
+    .tab b { font-size: 12px; min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--accent2); color: #08130d; }
+    .tab.nomap { border-style: dashed; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
+    @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+    .mapbox { position: relative; background: var(--bg2); border: 1px solid var(--line); border-radius: var(--radius);
+              overflow: hidden; touch-action: none; cursor: grab; user-select: none; }
+    .mapbox.drag { cursor: grabbing; }
+    .stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+    .stage > img { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
+    .stage.grid { background-color: var(--bg2);
+                  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); }
+    .pin { position: absolute; transform: translate(-50%, -50%) scale(var(--inv, 1)); display: flex; flex-direction: column;
+           align-items: center; gap: 2px; pointer-events: auto; cursor: pointer; z-index: 2; }
+    .pin .face { width: 26px; height: 26px; border-radius: 6px; border: 2px solid #fff; background: var(--card2);
+                 box-shadow: 0 2px 6px rgba(0,0,0,.6); image-rendering: pixelated; display: grid; place-items: center;
+                 font-weight: 700; font-size: 12px; color: var(--text); overflow: hidden; }
+    .pin .face img { width: 100%; height: 100%; display: block; }
+    .pin .tag { font-size: 12px; font-weight: 600; padding: 1px 6px; border-radius: 6px; background: rgba(13,15,20,.85);
+                color: #fff; white-space: nowrap; }
+    .pin.stale { opacity: .5; }
+    .pin.flash .face { animation: flash 1.2s ease-out 2; }
+    @keyframes flash { 0% { box-shadow: 0 0 0 0 rgba(167,139,250,.9); } 100% { box-shadow: 0 0 0 18px rgba(167,139,250,0); } }
+    @media (prefers-reduced-motion: reduce) { .pin.flash .face { animation: none; outline: 3px solid var(--accent); } }
+    .ctrls { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 3; }
+    .ctrls button { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line); background: rgba(24,28,37,.92);
+                    color: var(--text); font-size: 18px; cursor: pointer; }
+    .ctrls button:hover { border-color: var(--accent); }
+    .coords { position: absolute; left: 10px; bottom: 10px; z-index: 3; font-size: 13px; padding: 3px 8px; border-radius: 6px;
+              background: rgba(13,15,20,.85); color: var(--muted); font-variant-numeric: tabular-nums; }
+    .note { position: absolute; left: 10px; top: 10px; right: 56px; z-index: 3; font-size: 13px; padding: 6px 10px; border-radius: 8px;
+            background: rgba(13,15,20,.88); color: var(--muted); }
+    .side h3 { margin: 0 0 8px; font-size: 16px; }
+    .plist { display: grid; gap: 8px; }
+    .prow { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: center; padding: 9px 10px; text-align: left;
+            background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); color: var(--text);
+            font: inherit; cursor: pointer; width: 100%; }
+    .prow:hover { border-color: var(--accent); }
+    .prow .face { width: 34px; height: 34px; border-radius: 6px; background: var(--card2); overflow: hidden; display: grid;
+                  place-items: center; font-weight: 700; image-rendering: pixelated; }
+    .prow .face img { width: 100%; height: 100%; display: block; }
+    .prow b { display: block; }
+    .prow small { display: block; color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .empty { padding: 14px; border: 1px dashed var(--line); border-radius: var(--radius); color: var(--muted); font-size: 14px; }
+    .how { margin-top: 14px; }
+    .how ol { margin: 6px 0 0; padding-left: 20px; color: var(--muted); font-size: 14px; }
+    .how code { background: var(--card2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="sitebar">
+    <div class="wrap sitebar-inner">
+      <a class="ace" href="../">ACE<span>.</span> <small>Hypixel</small></a>
+      <nav><a href="../">All tools</a></nav>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <h2>Live Clan Map</h2>
+        <p>Where clan members are in SkyBlock right now. Updates every couple of seconds.</p>
+      </div>
+      <div class="status" id="status" role="status"><i></i><span>Connecting to Jerry…</span></div>
+    </div>
+
+    <div class="tabs" id="tabs" role="toolbar" aria-label="Islands"></div>
+
+    <div class="layout">
+      <div class="mapbox" id="mapbox" aria-label="Island map">
+        <div class="stage" id="stage"></div>
+        <div class="ctrls">
+          <button type="button" id="zin" aria-label="Zoom in">+</button>
+          <button type="button" id="zout" aria-label="Zoom out">−</button>
+          <button type="button" id="zfit" aria-label="Fit the whole island">⤢</button>
+        </div>
+        <div class="note" id="note" hidden></div>
+        <div class="coords" id="coords">Hover the map for coordinates</div>
+      </div>
+
+      <aside class="side">
+        <h3>Online now</h3>
+        <div class="plist" id="plist"></div>
+        <div class="how">
+          <h3>Show up on the map</h3>
+          <ol>
+            <li>Install the <a href="../mod/">Ace Clan Hypixel mod</a> and link it to Jerry.</li>
+            <li>In Minecraft, open <code>/jerry settings</code> and switch on <b>Share my location</b>.</li>
+          </ol>
+          <p class="hint">It's off until you turn it on. On your private island the map only shows that you're home.</p>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="wrap foot">Island maps from <a href="https://github.com/dediamondpro/skyguide" target="_blank" rel="noopener">SkyGuide</a> by DeDiamondPro (<a href="SKYGUIDE-LICENSE.txt">GPL-3.0</a>). Not affiliated with Hypixel or Mojang.</footer>
+  <script src="islands.js?v=20261114m"></script>
+  <script src="app.js?v=20261114m"></script>
+</body>
+</html>

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ace Clan Hypixel Mod · ACE Hypixel</title>
-  <meta name="description" content="Download the Ace Clan Hypixel mod for Fabric: live SkyBlock drop trackers synced to Jerry on Discord, plus a storage viewer for your sacks and island chests.">
+  <meta name="description" content="Download the Ace Clan Hypixel mod for Fabric: live SkyBlock drop trackers synced to Jerry on Discord, plus a storage viewer for your sacks, ender chest, backpacks and island chests.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
@@ -50,20 +50,20 @@
     <div class="hero">
       <div class="txt">
         <h2>Ace Clan Hypixel Mod</h2>
-        <p>Track your SkyBlock drops live with the clan, and see everything in your sacks and island chests in one place. Your drops show up in Discord through Jerry, with a leaderboard for everyone playing.</p>
+        <p>Track your SkyBlock drops live with the clan, and see everything in your sacks, ender chest, backpacks and island chests in one place. Your drops show up in Discord through Jerry, with a leaderboard for everyone playing.</p>
         <div class="pills">
           <span class="pill">Minecraft 26.2</span>
           <span class="pill">Fabric</span>
           <span class="pill">Client-side only</span>
-          <span class="pill">Version 1.8.0</span>
+          <span class="pill">Version 1.12.0</span>
         </div>
       </div>
       <div class="dl">
-        <a class="btn" href="ace-clan-hypixel-1.8.0.jar" download>⬇ Download the mod</a>
-        <small>ace-clan-hypixel-1.8.0.jar · 79 KB</small>
+        <a class="btn" href="ace-clan-hypixel-1.12.0.jar" download>⬇ Download the mod</a>
+        <small>ace-clan-hypixel-1.12.0.jar · 100 KB</small>
       </div>
     </div>
-    <p class="hint">The mod reads chat and menus and draws on your screen. The only thing it ever sends is a <code>/gfs</code> command when you click an item in the storage viewer.</p>
+    <p class="hint">The mod reads chat and menus and draws on your screen. The only commands it ever sends are when you click an item in the storage viewer: <code>/gfs</code>, or the command that opens that ender chest page or backpack.</p>
 
     <h3 class="section-h">Set it up</h3>
     <ol class="steps">
@@ -97,16 +97,21 @@
     <div class="grid">
       <div class="card"><h3>📦 Sacks at a glance</h3><p>Press <b>B</b> or type <code>/jerry storage</code> for one searchable grid of everything in your sacks. No API key needed.</p></div>
       <div class="card"><h3>🖱️ Quick take-out</h3><p>Left click takes a stack, right click takes 1, shift click takes as many as fit. Uses Hypixel's own <code>/gfs</code>.</p></div>
+      <div class="card"><h3>🎒 Ender chest &amp; backpacks</h3><p>Every ender chest page and backpack is in the grid too. Click an item and it opens the exact page or backpack it's in.</p></div>
+      <div class="card"><h3>⭐ Favorites</h3><p>Hover an item and press <b>F</b> to star it and pin it to the top. Change the key in Controls under Ace Clan Hypixel.</p></div>
+      <div class="card"><h3>👤 Per profile</h3><p>Each SkyBlock profile keeps its own storage, saved between games. Switch profiles from the dropdown at the top.</p></div>
       <div class="card"><h3>🧰 Island chests</h3><p>Chests you open on your private island are remembered. Click an item and its chest lights up through walls.</p></div>
       <div class="card"><h3>⚙️ Settings screen</h3><p>Turn chest memory and each tracker on or off with <code>/jerry settings</code>.</p></div>
     </div>
-    <p class="hint">Sack counts come from Hypixel's API when you open the viewer (your Inventory API needs to be on), then stay live from the [Sacks] chat messages. Opening a sack menu updates it too.</p>
+    <p class="hint">Sacks, ender chest and backpacks come from Hypixel's API when you open the viewer (your Inventory API needs to be on). Sacks stay live from the [Sacks] chat messages, and opening a sack, ender chest page or backpack updates it straight away.</p>
 
     <h3 class="section-h">Commands</h3>
     <div class="scroll">
       <table class="cmd">
         <tr><td><code>/jerry gui</code></td><td>In Minecraft. Open the tracker panel: start, stop and see live totals.</td></tr>
-        <tr><td><code>/jerry storage</code></td><td>In Minecraft. Open the storage viewer for your sacks and island chests. The <b>B</b> key does the same.</td></tr>
+        <tr><td><code>/jerry storage</code></td><td>In Minecraft. Open the storage viewer for your sacks, ender chest, backpacks and island chests. The <b>B</b> key does the same.</td></tr>
+        <tr><td><code>/jerry storage highlight</code></td><td>In Minecraft. Outline every island chest the mod remembers, so you can spot the ones you haven't opened yet.</td></tr>
+        <tr><td><code>/jerry map</code></td><td>In Minecraft. Link to the <a href="../map/">live clan map</a>. Turn on <b>Share my location</b> in <code>/jerry settings</code> to show up on it.</td></tr>
         <tr><td><code>/jerry settings</code></td><td>In Minecraft. Toggle features and choose which of your drops are sent.</td></tr>
         <tr><td><code>/jerry start &lt;tracker&gt;</code></td><td>In Minecraft. Start a tracker. <code>/jerry stop &lt;tracker&gt;</code> stops it.</td></tr>
         <tr><td><code>/jerry status</code></td><td>In Minecraft. Check you're connected and what's running.</td></tr>
@@ -126,9 +131,9 @@
     <details><summary>My drops aren't being counted</summary>
       <p>The tracker has to be running (green in <code>/jerry gui</code>), and it has to be switched on for you in <code>/jerry settings</code>. If it still misses drops, say so in the clan Discord: which tracker and what you were doing.</p></details>
     <details><summary>The storage viewer is empty or out of date</summary>
-      <p>Press Sync. If it says the Inventory API is off, turn it on in SkyBlock under Settings → API Settings. Chests only show up once you've opened them on your island with chest memory on.</p></details>
+      <p>Press Sync. If it says the Inventory API is off, turn it on in SkyBlock under Settings → API Settings. Check the profile dropdown shows the profile you're on. Chests only show up once you've opened them on your island with chest memory on. If a chest still isn't saved, type <code>/jerry storage debug</code> right after closing it and send the result in the clan Discord.</p></details>
     <details><summary>Is this allowed on Hypixel?</summary>
-      <p>The mod only reads what the game already shows you and draws overlays. It doesn't automate anything: the storage viewer sends one <code>/gfs</code> per click, the same as typing it. As with any mod, you use it at your own risk.</p></details>
+      <p>The mod only reads what the game already shows you and draws overlays. It doesn't automate anything: the storage viewer sends one command per click, the same as typing it. As with any mod, you use it at your own risk.</p></details>
   </main>
 
   <footer class="wrap foot">Sea creature messages from the <a href="https://github.com/hannibal002/SkyHanni-REPO" target="_blank" rel="noopener">SkyHanni repo</a>. Not affiliated with Hypixel or Mojang.</footer>
