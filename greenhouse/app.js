@@ -20,6 +20,8 @@ const defaults = () => ({
   tool: 'inspect', tab: 'plan', sel: null,
   // Auto-planner: what to make, slots it may not use, where it put each target, and whether to fill spare slots.
   reqs: [], blocked: [], targets: [], fill: true,
+  // The step plan, which garden of it is on the grid, and ingredient mutations you already have.
+  auto: null, view: [0, 0], have: {},
 });
 let st = Object.assign(defaults(), U.readLS(KEY, {}) || {});
 st.set = Object.assign(defaults().set, st.set);
@@ -384,7 +386,6 @@ const autoLayout = m => !m.special && !m.godseed && !m.lonely && m.need.every(([
 // Everything with a plain recipe can be planned, plus Lonelily (nothing around it). Godseed needs effects, and
 // Shellfruit / Jerryflower can't be made by layout, so they're left out.
 const PLANNABLE = MUTATIONS.filter(m => !m.special && !m.godseed).sort((a, b) => RORDER[a.r] - RORDER[b.r] || a.name.localeCompare(b.name));
-let lastPlan = null;
 
 /**
  * Lay out the requested mutations on the unlocked, unblocked slots. Each target is an empty space (1×1, 2×2 or 3×3)
@@ -507,62 +508,217 @@ function autoPlan(reqs, fill) {
   return { plants, targets, placed };
 }
 
+/* ---------- step planner: earlier mutations first, as many gardens as it takes ---------- */
+// Shellfruit isn't grown from a layout: you explode a Turtlellini with a Blastberry (one of each per Shellfruit).
+const MANUAL = { SHELLFRUIT: [['TURTLELLINI', 1], ['BLASTBERRY', 1]] };
+const recipeOf = m => MANUAL[m.id] || m.need;
+const DEPTH = {};
+/** 0 for crops, 1 for mutations made from crops, 2 for ones that need those, and so on. */
+function depthOf(id) {
+  if (id in DEPTH) return DEPTH[id];
+  const m = MUT_BY_ID[id];
+  if (!m) return (DEPTH[id] = 0);
+  DEPTH[id] = 1;
+  return (DEPTH[id] = 1 + Math.max(0, ...recipeOf(m).map(([x]) => depthOf(x))));
+}
+/** Expected growth cycles until `d` of `k` spots have mutated, each rolling chance p every cycle:
+    the sum over t of P(fewer than d successes after t cycles), with successes ~ Binomial(k, 1 − (1 − p)^t). */
+function orderStat(d, k, p) {
+  let e = 0;
+  for (let t = 0; t < 5000; t++) {
+    const q = 1 - Math.pow(1 - p, t);
+    let cdf = 0, term = Math.pow(1 - q, k);
+    for (let i = 0; i < d; i++) { cdf += term; term = q >= 1 ? 0 : term * (k - i) / (i + 1) * q / (1 - q); }
+    e += cdf;
+    if (cdf < 1e-7) break;
+  }
+  return e;
+}
+/** Cycles for k spots to give `copies` mutations. A spot that mutates is busy while it grows (`grow` cycles),
+    then you harvest it and the empty spot rolls again. */
+function cyclesFor(k, p, copies, grow) {
+  if (!copies) return 0;
+  if (p <= 0 || k <= 0) return Infinity;
+  const full = Math.floor(copies / k), rest = copies % k;
+  return full * (orderStat(k, k, p) + grow) + (rest ? orderStat(rest, k, p) + grow : 0);
+}
+// How many successful mutations a plant helps with before it decays into a Dead Plant (wiki "mutation value").
+const decayAt = d => (d.kind === 'mut' ? (d.r === 'COMMON' ? 10 : 8) : 12);
+
+/** Everything about one garden: cycle time, setup, time per target, and plants that will decay. */
+function gardenInfo(res, want) {
+  const groups = new Set(res.plants.map(p => DEF[p.id]).filter(d => d.kind === 'crop').map(d => d.group || d.id));
+  const u = Math.min(10, groups.size + (+st.set.flora || 0)), T = cycleSeconds(u);
+  // Plants only count once they're fully grown, so nothing can mutate before the slowest one is.
+  const setup = Math.max(0, ...res.plants.map(p => DEF[p.id].stages || 0));
+  const spots = {};
+  for (const t of res.targets) spots[t.id] = (spots[t.id] || 0) + 1;
+  const per = Object.keys(spots).map(id => {
+    const m = MUT_BY_ID[id], copies = Math.max(want[id] || 0, 0);
+    return { id, spots: spots[id], copies, cycles: cyclesFor(spots[id], m.chance / 100, copies, m.stages || 0) };
+  });
+  // Each plant helps every target it touches, once per mutation there.
+  const perSpot = Object.fromEntries(per.map(x => [x.id, x.copies / x.spots]));
+  const touch = new Map();
+  for (const t of res.targets) {
+    const near = new Set(ring(t.r, t.c, MUT_BY_ID[t.id].size).map(p => key(...p)));
+    res.plants.forEach((p, i) => {
+      const s = DEF[p.id].size;
+      for (let dr = 0; dr < s; dr++) for (let dc = 0; dc < s; dc++) {
+        if (near.has(key(p.r + dr, p.c + dc))) { touch.set(i, (touch.get(i) || 0) + perSpot[t.id]); return; }
+      }
+    });
+  }
+  const decays = [...new Set([...touch].filter(([i, n]) => n > decayAt(DEF[res.plants[i].id])).map(([i]) => res.plants[i].id))];
+  const cycles = setup + Math.max(0, ...per.map(x => x.cycles));
+  return { plants: res.plants, targets: res.targets, per, u, T, setup, cycles, time: cycles * T, decays };
+}
+
+/**
+ * The whole plan. Mutations are handled deepest first, so each step knows how many copies of its ingredients the
+ * later steps use; then the steps are shown simplest first. Mutations that don't fit together get another garden.
+ */
+function planAll() {
+  const finalWant = {}, maxIds = new Set();
+  for (const q of st.reqs) {
+    if (!MUT_BY_ID[q.id]) continue;
+    if (q.max) maxIds.add(q.id); else finalWant[q.id] = (finalWant[q.id] || 0) + Math.max(1, +q.n || 1);
+  }
+  const all = new Set([...Object.keys(finalWant), ...maxIds]);
+  const visit = id => { for (const [x] of recipeOf(MUT_BY_ID[id])) if (MUT_BY_ID[x] && !all.has(x)) { all.add(x); visit(x); } };
+  [...all].forEach(visit);
+  const extra = {};   // copies later steps plant as ingredients
+  const steps = [];
+  for (let d = Math.max(0, ...[...all].map(depthOf)); d >= 1; d--) {
+    const want = {};
+    for (const id of all) {
+      if (depthOf(id) !== d) continue;
+      const n = Math.max(0, (extra[id] || 0) - (+st.have[id] || 0)) + (finalWant[id] || 0);
+      if (n > 0 || maxIds.has(id)) want[id] = n;
+    }
+    const ingr = {};
+    for (const id of all) if (depthOf(id) === d && extra[id]) ingr[id] = extra[id];
+    if (!Object.keys(want).length) {
+      // You already have every copy this step would make: keep it as a note so the "I already have" box stays.
+      if (Object.keys(ingr).length) steps.unshift({ want: {}, gardens: [], manual: [], failed: [], ingr, done: true });
+      continue;
+    }
+    const step = { want: {}, gardens: [], manual: [], failed: [], ingr };
+    for (const id of Object.keys(want)) {
+      if (!MANUAL[id]) continue;
+      step.manual.push({ id, n: want[id] }); step.want[id] = want[id];
+      for (const [x, k] of MANUAL[id]) extra[x] = (extra[x] || 0) + k * want[id];
+      delete want[id];
+    }
+    let left = Object.keys(want);
+    for (let guard = 0; left.length && guard < 12; guard++) {
+      const res = autoPlan(left.map(id => ({ id, n: want[id], max: maxIds.has(id) })), st.fill);
+      const got = left.filter(id => res.placed[id]);
+      if (!got.length) {
+        // Doesn't fit yet, but still plan what it's made from (one recipe's worth each), so the earlier steps show.
+        step.failed.push(...left);
+        for (const id of left) { step.want[id] = want[id] || 1; for (const [x, k] of recipeOf(MUT_BY_ID[id])) if (MUT_BY_ID[x]) extra[x] = (extra[x] || 0) + k; }
+        break;
+      }
+      for (const id of got) step.want[id] = maxIds.has(id) ? Math.max(res.placed[id], want[id]) : want[id];
+      step.gardens.push(gardenInfo(res, step.want));
+      for (const p of res.plants) if (MUT_BY_ID[p.id]) extra[p.id] = (extra[p.id] || 0) + 1;
+      left = left.filter(id => !res.placed[id]);
+    }
+    steps.unshift(step);
+  }
+  return steps;
+}
+
 function renderAuto() {
   const box = $('#auto');
-  const opt = m => `<option value="${m.id}">${U.esc(m.name)} (${m.r.toLowerCase()}${m.size > 1 ? `, ${m.size}×${m.size}` : ''})</option>`;
+  const groups = Object.keys(RORDER).map(r => {
+    const ms = PLANNABLE.filter(m => m.r === r);
+    return ms.length ? `<optgroup label="${U.pretty(r)}">${ms.map(m => `<option value="${m.id}">${U.esc(m.name)}${m.size > 1 ? ` (${m.size}×${m.size})` : ''}${found && !found.has(m.id) ? ' · not found yet' : ''}</option>`).join('')}</optgroup>` : '';
+  }).join('');
   const rows = st.reqs.map((q, i) => {
     const m = MUT_BY_ID[q.id];
     return `<div class="spot">${img(m.id)} <span class="grow">${nameHTML(m.id)}</span>
-      <input type="number" min="1" max="99" value="${q.n}" data-qn="${i}" style="width:58px" aria-label="How many">
-      <button class="btn ghost small" data-qmax="${i}" title="As many as fit with the other requests">Max</button>
+      ${q.max ? '<span class="chip">as many as fit</span>' : `<input type="number" min="1" max="99" value="${q.n}" data-qn="${i}" style="width:58px" aria-label="How many">`}
+      <button class="btn ghost small${q.max ? ' on' : ''}" data-qmax="${i}" title="As many as fit in one garden">Max</button>
       <button class="btn ghost small" data-qdel="${i}" title="Remove">✕</button></div>`;
   }).join('');
-  let out = '';
-  if (lastPlan) {
-    const { placed, plants, reqs } = lastPlan;
-    const lines = reqs.map(q => {
-      const got = placed[q.id] || 0, m = MUT_BY_ID[q.id];
-      return `<li>${nameHTML(q.id)}: <b>${got}</b> of ${q.n} placed${got < q.n ? ' <span class="muted">(no more room)</span>' : ''} · grows on ${U.esc(SOIL[m.soil])}${m.chance ? ` · ${m.chance}% per cycle` : ''}</li>`;
-    }).join('');
-    const count = {};
-    for (const p of plants) count[p.id] = (count[p.id] || 0) + 1;
-    const plantList = Object.entries(count).sort((a, b) => b[1] - a[1])
-      .map(([id, n]) => `<span class="need">${img(DEF[id].icon)}<b>${n}×</b> ${nameHTML(id)}</span>`).join(' ');
-    // Ingredient mutations you need seeds for, and the ones not discovered yet.
-    const ingr = [...new Set(plants.map(p => p.id).filter(id => MUT_BY_ID[id]))];
-    const missing = found ? ingr.filter(id => !found.has(id)) : [];
-    out = `<div class="k">Result</div><ul class="fx-list">${lines}</ul>
-      ${plantList ? `<div class="k">Plant these</div><div class="path">${plantList}</div>` : ''}
-      ${ingr.length ? `<p class="hint">Mutations used as ingredients have to be grown (or harvested for their seeds) first.</p>` : ''}
-      ${missing.length ? `<div class="k">Not discovered yet</div>${missing.map(id => `<div class="spot">${img(id)} <span class="grow">${nameHTML(id)}</span>
-        <button class="btn ghost small" data-qfirst="${id}">Plan this first</button></div>`).join('')}` : ''}`;
-  }
+  const steps = st.auto || [];
+  const [vs, vg] = st.view || [0, 0];
+  const total = steps.reduce((n, s) => n + s.gardens.reduce((x, g) => x + g.time, 0), 0);
+  const nGardens = steps.reduce((n, s) => n + s.gardens.length, 0);
+  const cyc = (c, T) => (c === Infinity ? 'never' : `≈ ${c < 10 ? c.toFixed(1) : Math.round(c)} cycles (${U.dur(c * T)})`);
+  const list = obj => Object.entries(obj).sort((a, b) => b[1] - a[1]).map(([id, n]) => `<span class="need">${img(DEF[id].icon)}<b>${n}×</b> ${nameHTML(id)}</span>`).join(' ');
+  const stepHTML = (s, si) => {
+    const title = s.done ? 'nothing: you have enough' : Object.entries(s.want).map(([id, n]) => `${nameHTML(id)}${n ? ` ×${n}` : ''}`).join(', ');
+    const time = s.gardens.reduce((x, g) => x + g.time, 0);
+    const ingr = Object.keys(s.ingr);
+    return `<div class="gh-step${si === vs ? ' on' : ''}${s.done ? ' done' : ''}">
+      <div class="gh-step-h"><b>Step ${si + 1}</b> <span class="grow">Grow ${title}</span>${time ? `<span class="muted">≈ ${time === Infinity ? '—' : U.dur(time)}</span>` : ''}</div>
+      ${ingr.length ? `<div class="gh-have">${ingr.map(id => `<label>${img(id)}<span>${nameHTML(id)}: ${s.ingr[id]} needed later. I already have</span><input type="number" min="0" max="999" value="${st.have[id] || ''}" placeholder="0" data-have="${id}" style="width:56px"></label>`).join('')}</div>` : ''}
+      ${s.manual.map(x => `<p class="hint">${img(x.id)} <b>${U.esc(MUT_BY_ID[x.id].name)} ×${x.n}:</b> ${U.esc(MUT_BY_ID[x.id].special)} You need one Turtlellini and one Blastberry for each, from the steps before.</p>`).join('')}
+      ${s.gardens.map((g, gi) => {
+        const on = si === vs && gi === vg;
+        const count = {};
+        for (const p of g.plants) count[p.id] = (count[p.id] || 0) + 1;
+        const soils = [...new Set(g.per.map(x => SOIL[MUT_BY_ID[x.id].soil]))];
+        return `<div class="gh-garden${on ? ' on' : ''}">
+          <div class="gh-garden-h"><b>Garden ${gi + 1}</b>${s.gardens.length > 1 ? ` of ${s.gardens.length}` : ''}
+            <button class="btn small${on ? '' : ' ghost'}" data-view="${si},${gi}">${on ? 'On the grid' : 'Show on grid'}</button></div>
+          <ul class="fx-list">${g.per.map(x => `<li>${nameHTML(x.id)}: ${x.spots} spot${x.spots > 1 ? 's' : ''} for ${x.copies} · ${MUT_BY_ID[x.id].chance}% a cycle · ${cyc(x.cycles, g.T)}${MUT_BY_ID[x.id].stages ? `, counting ${MUT_BY_ID[x.id].stages} cycles to grow` : ''}</li>`).join('')}</ul>
+          <div class="path">${list(count)}</div>
+          <p class="hint">Cycle ${U.dur(g.T)} (${g.u}/10 unique crops)${g.setup ? ` · ${g.setup} cycles (${U.dur(g.setup * g.T)}) for the plants to grow before anything can mutate` : ''} · Soil for the spots: ${U.esc(soils.join(', '))}.
+            ${count.DEAD_PLANT ? '<br>Dead Plants come from plants that decayed (each plant lasts 8 to 12 mutations).' : ''}${g.decays.length ? `<br><b>Will decay:</b> ${g.decays.map(id => U.esc(nameOf(id))).join(', ')} help with more mutations than they last (8 to 12), so replant them when they turn into Dead Plants.` : ''}</p>
+        </div>`;
+      }).join('')}
+      ${s.failed.length ? `<p class="ht-warn">${s.failed.map(id => U.esc(MUT_BY_ID[id].name)).join(', ')} won't fit. Unlock more slots (🔓 on the Planner tab) or unblock some.</p>` : ''}
+    </div>`;
+  };
   box.innerHTML = `<div class="card gh-info">
     <b>Auto-planner</b>
-    <p class="hint" style="margin:4px 0 8px">Pick the mutations you want and how many. It fills your unlocked slots with the plants they need,
-      sharing ingredients between targets. Faded icons with a gold outline are where each target will grow.</p>
-    <div class="toolbar"><select id="aSel" style="flex:1;min-width:0">${PLANNABLE.map(opt).join('')}</select>
+    <p class="hint" style="margin:4px 0 8px">Pick the mutations you want. Any mutation they're made from comes first as its own step,
+      and mutations that don't fit together get another garden. Gold outlines on the grid are where each one grows.</p>
+    <div class="toolbar"><select id="aSel" style="flex:1;min-width:0">${groups}</select>
       <input id="aN" type="number" min="1" max="99" value="1" style="width:58px" aria-label="How many">
       <button id="aAdd" class="btn small">Add</button></div>
     ${rows || '<p class="hint">Nothing added yet.</p>'}
-    <label style="display:block;margin-top:8px"><input type="checkbox" id="aFill" ${st.fill ? 'checked' : ''}> Fill spare slots with other crops for the unique-crop bonus</label>
-    <label style="display:block;margin-top:4px"><input type="checkbox" id="aBlock" ${st.tool === 'block' ? 'checked' : ''}> Block slots: click slots on the grid that the planner must leave alone${st.blocked.length ? ` (${st.blocked.length} blocked)` : ''}</label>
-    <div class="toolbar" style="margin-top:10px"><button id="aGo" class="btn" ${st.reqs.length ? '' : 'disabled'}>Generate layout</button>
+    <label style="display:block;margin-top:8px"><input type="checkbox" id="aFill" ${st.fill ? 'checked' : ''}> Fill spare slots with other crops (faster cycles from the unique-crop bonus)</label>
+    <label style="display:block;margin-top:4px"><input type="checkbox" id="aBlock" ${st.tool === 'block' ? 'checked' : ''}> Block slots: click slots on the grid the planner must leave alone${st.blocked.length ? ` (${st.blocked.length} blocked)` : ''}</label>
+    <div class="toolbar" style="margin-top:10px"><button id="aGo" class="btn" ${st.reqs.length ? '' : 'disabled'}>${steps.length ? 'Plan again' : 'Make the plan'}</button>
       ${st.blocked.length ? '<button id="aUnblock" class="btn ghost small">Clear blocked slots</button>' : ''}</div>
-    ${out}
+    ${steps.length ? `<div class="gh-total"><span><b>${steps.length}</b> step${steps.length > 1 ? 's' : ''}</span><span><b>${nGardens}</b> garden${nGardens === 1 ? '' : 's'}</span><span>≈ <b>${total === Infinity ? '—' : U.dur(total)}</b> in all</span>
+      ${nGardens > 1 ? `<span class="grow"></span><button class="btn ghost small" data-step="-1">◀ Previous</button><button class="btn ghost small" data-step="1">Next ▶</button>` : ''}</div>
+      ${steps.map(stepHTML).join('')}
+      <p class="hint">Times are averages: each empty spot rolls its chance once a growth cycle, the plants around it must be fully grown,
+        and a mutation that needs to grow keeps its spot busy until you harvest it. Keep everything watered: each cycle drains 20 water,
+        and a plant at −100 stops growing and can't help mutations.</p>` : ''}
   </div>`;
 }
-function runPlan() {
-  if (st.plants.length && !lastPlan && !confirm('Replace the plants in your layout with the planned ones?')) return;
-  const res = autoPlan(st.reqs, st.fill);
-  st.plants = res.plants;
-  st.targets = res.targets;
+/** Put garden gi of step si on the grid. */
+function showGarden(si, gi) {
+  const s = st.auto && st.auto[si], g = s && s.gardens[gi];
+  if (!g) return;
+  st.view = [si, gi];
+  st.plants = g.plants.map(p => ({ ...p }));
+  st.targets = g.targets.map(t => ({ ...t }));
   st.sel = null;
-  lastPlan = { ...res, reqs: st.reqs.map(q => ({ ...q })) };
   save(); render();
-  const total = Object.values(res.placed).reduce((n, v) => n + v, 0);
-  toast(total ? `Planned ${total} mutation spot${total > 1 ? 's' : ''}.` : 'Nothing fits. Unlock more slots or unblock some.');
 }
+function runPlan(quiet) {
+  if (!st.reqs.length) { st.auto = null; save(); renderAuto(); return; }
+  if (!quiet && st.plants.length && !st.auto && !confirm('Replace the plants in your layout with the planned ones?')) return;
+  st.auto = planAll();
+  // Stay on the same step and garden when re-planning, if it still exists.
+  const [vs, vg] = st.view || [0, 0];
+  const si = st.auto[vs] && st.auto[vs].gardens.length ? vs : st.auto.findIndex(s => s.gardens.length);
+  if (si >= 0) showGarden(si, Math.min(vg, st.auto[si].gardens.length - 1));
+  else { st.plants = []; st.targets = []; save(); render(); }
+  if (!quiet) {
+    const n = st.auto.reduce((x, s) => x + s.gardens.length, 0);
+    toast(n ? `${st.auto.length} step${st.auto.length > 1 ? 's' : ''}, ${n} garden${n > 1 ? 's' : ''}. Step ${st.view[0] + 1}, garden ${st.view[1] + 1} is on the grid.` : 'Nothing fits. Unlock more slots or unblock some.');
+  }
+}
+const replan = () => { if (st.auto) runPlan(true); else { save(); renderAuto(); } };
 function bindAuto() {
   const box = $('#auto');
   box.addEventListener('click', e => {
@@ -570,25 +726,26 @@ function bindAuto() {
     if (t.id === 'aAdd') {
       const id = $('#aSel').value, n = Math.max(1, Math.min(99, +$('#aN').value || 1));
       const q = st.reqs.find(x => x.id === id);
-      if (q) q.n += n; else st.reqs.push({ id, n });
-      save(); renderAuto(); return;
+      if (q) { q.n += n; q.max = false; } else st.reqs.push({ id, n });
+      replan(); return;
     }
     if (t.id === 'aGo') { runPlan(); return; }
-    if (t.id === 'aUnblock') { st.blocked = []; save(); render(); return; }
-    const del = t.closest('[data-qdel]'), max = t.closest('[data-qmax]'), first = t.closest('[data-qfirst]');
-    if (del) { st.reqs.splice(+del.dataset.qdel, 1); save(); renderAuto(); }
-    if (max) {
-      const i = +max.dataset.qmax;
-      const res = autoPlan(st.reqs.map((q, j) => (j === i ? { ...q, max: true } : q)), false);
-      st.reqs[i].n = Math.max(1, res.placed[st.reqs[i].id] || 0);
-      save(); renderAuto();
+    if (t.id === 'aUnblock') { st.blocked = []; replan(); return; }
+    const del = t.closest('[data-qdel]'), max = t.closest('[data-qmax]'), view = t.closest('[data-view]'), step = t.closest('[data-step]');
+    if (del) { st.reqs.splice(+del.dataset.qdel, 1); replan(); }
+    if (max) { const q = st.reqs[+max.dataset.qmax]; q.max = !q.max; replan(); }
+    if (view) { const [si, gi] = view.dataset.view.split(',').map(Number); showGarden(si, gi); }
+    if (step && st.auto) {
+      const flat = st.auto.flatMap((s, si) => s.gardens.map((_, gi) => [si, gi]));
+      const at = flat.findIndex(([a, b]) => a === st.view[0] && b === st.view[1]);
+      showGarden(...flat[(at + +step.dataset.step + flat.length) % flat.length]);
     }
-    if (first) { st.reqs = [{ id: first.dataset.qfirst, n: 1 }]; lastPlan = null; save(); runPlan(); }
   });
   box.addEventListener('change', e => {
     const t = e.target;
-    if (t.dataset.qn !== undefined) { st.reqs[+t.dataset.qn].n = Math.max(1, Math.min(99, +t.value || 1)); save(); }
-    if (t.id === 'aFill') { st.fill = t.checked; save(); }
+    if (t.dataset.qn !== undefined) { st.reqs[+t.dataset.qn].n = Math.max(1, Math.min(99, +t.value || 1)); replan(); }
+    if (t.dataset.have !== undefined) { st.have[t.dataset.have] = Math.max(0, +t.value || 0); replan(); }
+    if (t.id === 'aFill') { st.fill = t.checked; replan(); }
     if (t.id === 'aBlock') { st.tool = t.checked ? 'block' : 'inspect'; save(); $('#grid').dataset.tool = st.tool; }
   });
 }
@@ -624,6 +781,7 @@ function applyTool(r, c, start) {
   if (t === 'block') {
     if (!st.open.includes(key(r, c))) return false;
     if (start) drag.want = !st.blocked.includes(key(r, c));
+    blockEdit = true;
     st.blocked = st.blocked.filter(k => k !== key(r, c));
     if (drag.want) st.blocked.push(key(r, c));
     return true;
@@ -631,6 +789,7 @@ function applyTool(r, c, start) {
   return place(t, r, c);
 }
 const drag = { on: false, last: null, want: true };
+let blockEdit = false;   // blocked slots changed during this drag, so re-plan when it ends
 function bind() {
   document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) { st.tab = b.dataset.tab; save(); render(); } });
   $('#palette').addEventListener('click', e => { const b = e.target.closest('[data-tool]'); if (b) { st.tool = b.dataset.tool; save(); renderPalette(); $('#grid').dataset.tool = st.tool; } });
@@ -650,7 +809,7 @@ function bind() {
     drag.last = key(...at);
     if (applyTool(at[0], at[1], false)) { save(); render(); }
   });
-  const end = () => { drag.on = false; };
+  const end = () => { drag.on = false; if (blockEdit) { blockEdit = false; replan(); } };
   grid.addEventListener('pointerup', end); grid.addEventListener('pointercancel', end);
 
   $('#detail').addEventListener('click', e => {
@@ -671,7 +830,7 @@ function bind() {
   $('#gr').addEventListener('change', renderGuide);
   $('#gf').addEventListener('change', renderGuide);
 
-  $('#clearPlants').addEventListener('click', () => { if (st.plants.length && confirm('Remove every plant from the layout?')) { st.plants = []; st.targets = []; st.sel = null; lastPlan = null; save(); render(); } });
+  $('#clearPlants').addEventListener('click', () => { if (st.plants.length && confirm('Remove every plant from the layout?')) { st.plants = []; st.targets = []; st.sel = null; st.auto = null; save(); render(); } });
   $('#resetSlots').addEventListener('click', () => { if (confirm('Go back to the 12 starting slots?')) { st.open = defaults().open; st.plants = st.plants.filter(p => canPlace(p.id, p.r, p.c)); save(); render(); } });
   $('#unlockAll').addEventListener('click', () => { st.open = []; for (let r = 0; r < GRID; r++) for (let c = 0; c < GRID; c++) st.open.push(key(r, c)); save(); render(); });
 
