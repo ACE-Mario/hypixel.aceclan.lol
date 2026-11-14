@@ -359,11 +359,80 @@ function render(res) {
   if (state.tab === 'req') renderReq(p, res);
   if (state.tab === 'steps') renderSteps(p, res);
 
+  renderIngame();
+  sendPlan(false);
+
   if (focus) {
     const el = document.querySelector(`[data-focus="${CSS.escape(focus)}"]`);
     if (el) { el.focus(); if (el.select) el.select(); }
   }
 }
+/* ---------- show in game (Ace Clan Hypixel mod HUD) ---------- */
+// The active plan's raw materials go to Jerry under a private sync code kept in this browser.
+// The mod reads them back with the same code (/jerry plan link <code>) and counts what you have live.
+const JERRY = 'https://jerry.aceclan.lol';
+const SYNC_KEY = 'ace-hypixel.ironman.sync';
+let sync = readLS(SYNC_KEY, null) || { on: false, code: '' };
+let lastSent = '', sentAt = 0, sendTimer = 0, sendErr = '';
+function newCode() {
+  const a = new Uint8Array(24);
+  crypto.getRandomValues(a);
+  return Array.from(a, b => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'[b % 56]).join('');
+}
+function planPayload(p, res) {
+  const items = [...res.raw].filter(([id]) => id !== COIN).map(([id, q]) => ({ id, name: plainName(id), need: Math.ceil(q), have: Math.floor(p.have[id] || 0) }));
+  return { code: sync.code, name: plainName(p.target), target: p.target, items: items.slice(0, 400) };
+}
+function sendPlan(force) {
+  const p = plan();
+  if (!sync.on || !sync.code || !p || !p.target || !last || last.missing.size) return;
+  const body = JSON.stringify(planPayload(p, last));
+  if (!force && body === lastSent) return;
+  clearTimeout(sendTimer);
+  sendTimer = setTimeout(() => {
+    fetch(JERRY + '/mc/plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })
+      .then(r => r.json().then(d => { if (!r.ok || !d.ok) throw new Error(d.error || r.status); }))
+      .then(() => { lastSent = body; sentAt = Date.now(); sendErr = ''; })
+      .catch(() => { sendErr = "Couldn't reach Jerry. It tries again when the plan changes."; })
+      .then(renderIngame);
+  }, force ? 0 : 1200);
+}
+function renderIngame() {
+  const el = $('#ingame');
+  if (!el) return;
+  if (!sync.on) {
+    el.innerHTML = `<span class="grow"><b>Show in game</b>: see what's left to gather on your Minecraft HUD with the
+      <a href="../mod/">Ace Clan Hypixel mod</a>. It counts your sacks and storage live as you play.</span>
+      <button class="btn small" data-ig="on">Turn on</button>`;
+    return;
+  }
+  const when = sentAt ? 'sent ' + new Date(sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'sending…';
+  el.innerHTML = `<span class="grow"><span class="on">● Showing in game</span> · ${sendErr ? esc(sendErr) : when}<br>
+      In Minecraft, type this once: <code>/jerry plan link ${esc(sync.code)}</code></span>
+      <button class="btn small ghost" data-ig="copy">Copy command</button>
+      <button class="btn small ghost" data-ig="off">Turn off</button>`;
+}
+function bindIngame() {
+  $('#ingame').addEventListener('click', e => {
+    const b = e.target.closest('[data-ig]');
+    if (!b) return;
+    const act = b.dataset.ig;
+    if (act === 'on') {
+      if (!sync.code) sync.code = newCode();
+      sync.on = true; lastSent = '';
+      writeLS(SYNC_KEY, sync); renderIngame(); sendPlan(true);
+    } else if (act === 'off') {
+      sync.on = false; writeLS(SYNC_KEY, sync);
+      fetch(JERRY + '/mc/plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: sync.code, clear: true }) }).catch(() => {});
+      lastSent = ''; sentAt = 0; renderIngame();
+    } else if (act === 'copy') {
+      const cmd = '/jerry plan link ' + sync.code;
+      (navigator.clipboard ? navigator.clipboard.writeText(cmd) : Promise.reject()).then(() => toast('Copied. Paste it into Minecraft chat.'), () => toast(cmd));
+    }
+  });
+  renderIngame();
+}
+
 function stat(k, v, pct) {
   const bar = pct === undefined ? '' : `<div class="bar ${pct >= 100 ? 'full' : ''}"><span style="width:${Math.min(100, pct)}%"></span></div>`;
   return `<div class="stat"><div class="k">${esc(k)}</div><div class="v">${v}</div>${bar}</div>`;
@@ -1017,6 +1086,7 @@ async function applyProfile(d, fresh) {
 
 /* ---------- start ---------- */
 bind();
+bindIngame();
 bindCustom();
 renderPresets();
 if (state.plans.length && !plan()) state.active = state.plans[0].id;
