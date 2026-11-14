@@ -440,7 +440,7 @@ function renderRaw(p, res) {
   $('#tab-raw').innerHTML = `
     <div class="toolbar">
       <label><input type="checkbox" id="hideDone" ${state.hideDone ? 'checked' : ''}> Hide finished</label>
-      <span>${U.login() ? 'Filled in from your profile. Type over any amount (minion and island chests aren\'t in the API).' : 'Type how many you have of each item. Everything is saved in this browser.'}</span>
+      <span>${U.login() ? 'Filled in from your profile, including items in your Forge. Type over any amount (minion and island chests aren\'t in the API).' : 'Type how many you have of each item. Everything is saved in this browser.'}</span>
     </div>
     <table class="table">
       <thead><tr><th>Item</th><th class="num">Needed</th><th class="num">Have</th><th class="num">Left</th><th class="barcell">Progress</th></tr></thead>
@@ -967,11 +967,14 @@ function bindCustom() {
 
 /* ---------- from the logged-in profile ---------- */
 let profileCounts = null;
-/** Everything the profile is holding: sacks, inventory, ender chest, backpacks, vault, wardrobe, equipment, coins. */
+let forging = 0;   // items in the Forge on the last profile read
+/** Everything the profile is holding: sacks, inventory, ender chest, backpacks, vault, wardrobe, equipment, coins,
+    and whatever is in the Forge right now (it's already paid for, so it counts as had). */
 async function profileItems(d) {
   const inv = d.member.inventory;
   if (!inv || (!inv.sacks_counts && !inv.inv_contents)) return null;
   const counts = {};
+  forging = 0;
   const add = (id, n) => { if (id && n > 0) counts[id] = (counts[id] || 0) + n; };
   for (const [id, n] of Object.entries(inv.sacks_counts || {})) add(id, n);
   const blobs = [inv.inv_contents, inv.ender_chest_contents, inv.personal_vault_contents, inv.wardrobe_contents, inv.inv_armor, inv.equipment_contents,
@@ -979,6 +982,17 @@ async function profileItems(d) {
   for (const b of blobs) {
     if (!b || !b.data) continue;
     try { for (const it of await U.nbtItems(b.data)) add(it.id, it.count); } catch (e) { console.warn('Skipped unreadable storage', e); }
+  }
+  // Items being forged: each slot gives what its forge recipe makes (usually 1)
+  const forges = (d.member.forge && d.member.forge.forge_processes) || {};
+  for (const forge of Object.values(forges)) {
+    for (const f of Object.values(forge || {})) {
+      if (!f || !f.id) continue;
+      const it = await fetchItem(f.id);
+      const r = (it.recipes || []).find(x => x.type === 'forge');
+      add(f.id, r ? r.count : 1);
+      forging += 1;
+    }
   }
   const coins = (d.member.currencies && d.member.currencies.coin_purse || 0) + (d.profile.banking && d.profile.banking.balance || 0);
   if (coins) counts[COIN] = Math.floor(coins);
@@ -998,7 +1012,7 @@ async function applyProfile(d, fresh) {
     saveState(); refresh();
   }
   profileCounts = counts;
-  return `"Have" filled in from ${U.num(n)} item types in your sacks, storage and purse`;
+  return `"Have" filled in from ${U.num(n)} item types in your sacks, storage and purse` + (forging ? `, plus ${forging} in your Forge` : '');
 }
 
 /* ---------- start ---------- */
