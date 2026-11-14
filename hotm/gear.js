@@ -246,14 +246,14 @@ const Gear = (() => {
       (1 Pristine is roughly worth 50 fortune) and Mining Spread on blocks and metals (each 100 is about one extra block). */
   const valueFor = (x, b) => fortuneFor(x, b) + spreadFor(x, b) * 10 + (b.kind === 'gem' ? (x.pristine || 0) * 50 : 0);
   // A preset picks what you mine, so the gear is chosen for it (keeps your pick if it's already the right kind).
-  const PRESET_BLOCK = { gems: ['gem', 'ruby'], blocks: [['goldblock', 'diamondblock'], 'goldblock'], powder: [['hardstone'], 'hardstone'],
+  const PRESET_BLOCK = { gems: ['gem', 'onyx'], blocks: [['goldblock', 'diamondblock'], 'goldblock'], powder: [['hardstone'], 'hardstone'],
     mithril: [['mithril1', 'mithril2', 'mithril3', 'titanium'], 'mithril1'], comms: [['mithril1', 'mithril2', 'mithril3', 'titanium'], 'mithril1'], glacite: [['umber', 'tungsten', 'glacite'], 'glacite'] };
   function preset(id) {
     const m = PRESET_BLOCK[id];
     if (!m) return;
     const cur = blockOf();
     if (Array.isArray(m[0]) ? !m[0].includes(cur.id) : cur.kind !== m[0]) g.block = m[1];
-    if (id === 'glacite') g.shaft = true;
+    g.shaft = id === 'gems';   // gemstones are mined in the Glacite Mineshafts; Dwarven Metals out in the tunnels
     delete g.pick.helmet; delete g.pick.chest; delete g.pick.legs; delete g.pick.boots; delete g.pick.pet; delete g.pick.tool;
     open = null;
     save();

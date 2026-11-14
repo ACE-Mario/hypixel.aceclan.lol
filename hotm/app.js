@@ -3,18 +3,21 @@
 const MINING_GUIDE = 'https://skykings.net/guides/mining';
 
 // Builds: perk → target level ('max' = max level). Perks needed to connect them are added at level 1.
+// No Seasoned Mineman (Mining Wisdom): every build assumes max Mining level, so the XP is wasted.
 const PRESETS = [
   // Checked against the SkyKings mining guide (updated Nov 2026, after the Glacite Tunnels and Mineshafts) and the wiki.
   // Perks are in priority order: "Only what my tier allows" drops from the end. `fallback` is the ability used until
   // the main one is reachable (Sheer Force and Gemstone Infusion need HotM 10).
   {
-    id: 'gems', name: 'Gemstone mining', src: MINING_GUIDE, srcName: 'SkyKings mining guide',
-    desc: 'Crystal Hollows and Glacite gemstones. Gem speed and fortune (Professional, Gem Lover), Front Loaded and Daily Powder, then Pristine from Mining Master. Mining Speed Boost is the ability; Gemstone Infusion only pays off with Perfect gems in your drill.',
+    id: 'gems', name: 'Gemstones (Glacite Mineshafts)', src: MINING_GUIDE, srcName: 'SkyKings mining guide',
+    desc: 'Gemstones in the Glacite Mineshafts. Gem speed and fortune (Professional, Gem Lover), Front Loaded and Daily Powder, Warm Heart for the cold, Surveyor to find mineshafts, then the mineshaft perks (Steady Hand for Gemstone Spread, Eager Adventurer, Rags to Riches) and Pristine from Mining Master. Corpse loot perks come last. Mining Speed Boost is the ability; Gemstone Infusion only pays off with Perfect gems in your drill.',
     ability: 'mining_speed_boost',
     levels: {
       mining_speed: 'max', mining_fortune: 'max', mining_speed_boost: 1, professional: 'max', gem_lover: 'max',
-      fortunate_mineman: 'max', speedy_mineman: 'max', front_loaded: 1, daily_powder: 1, seasoned_mineman: 'max',
-      great_explorer: 'max', powder_buff: 'max', core_of_the_mountain: 10, mining_master: 'max',
+      fortunate_mineman: 'max', speedy_mineman: 'max', front_loaded: 1, daily_powder: 1, core_of_the_mountain: 10,
+      warm_heart: 'max', surveyor: 'max', steady_hand: 'max', mineshaft_mayhem: 1, eager_adventurer: 'max', rags_to_riches: 'max',
+      mining_master: 'max', powder_buff: 'max', dead_mans_chest: 'max', vanguard_seeker: 'max', gifts_from_the_departed: 'max',
+      no_stone_unturned: 'max',
     },
   },
   {
@@ -46,14 +49,13 @@ const PRESETS = [
     },
   },
   {
-    id: 'glacite', name: 'Glacite & mineshafts', src: MINING_GUIDE, srcName: 'SkyKings mining guide',
-    desc: 'Glacite Tunnels and Mineshafts: more mineshafts (Surveyor), more corpses and loot, Cold Resistance (Warm Heart), and Dwarven Metal speed and fortune. Sheer Force at HotM 10, Mining Speed Boost before that.',
+    id: 'glacite', name: 'Dwarven Metals (Glacite Tunnels)', src: MINING_GUIDE, srcName: 'SkyKings mining guide',
+    desc: 'Umber, Tungsten and Glacite in the Glacite Tunnels, outside the mineshafts. Strong Arm for Dwarven Metal speed, Metal Head for Dwarven Metal Fortune, Warm Heart for the cold, Precision Mining (+30% speed on metals). Sheer Force at HotM 10, Mining Speed Boost before that.',
     ability: 'sheer_force', fallback: 'mining_speed_boost',
     levels: {
-      mining_speed: 'max', mining_fortune: 'max', mining_speed_boost: 1, core_of_the_mountain: 10, strong_arm: 'max',
-      warm_heart: 'max', speedy_mineman: 'max', fortunate_mineman: 'max', surveyor: 'max', mineshaft_mayhem: 1,
-      metal_head: 'max', eager_adventurer: 'max', rags_to_riches: 'max', steady_hand: 'max', dead_mans_chest: 'max',
-      vanguard_seeker: 'max', gifts_from_the_departed: 'max', no_stone_unturned: 'max', mining_master: 'max', sheer_force: 1,
+      mining_speed: 'max', mining_fortune: 'max', mining_speed_boost: 1, precision_mining: 1, strong_arm: 'max', warm_heart: 'max',
+      speedy_mineman: 'max', fortunate_mineman: 'max', metal_head: 'max', efficient_miner: 'max', core_of_the_mountain: 10,
+      powder_buff: 'max', sheer_force: 1,
     },
   },
   {
