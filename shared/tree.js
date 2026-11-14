@@ -179,7 +179,8 @@ const Tree = (() => {
     function totals() {
       const plan = {}, up = {}, refund = {};
       for (const id of ids) {
-        t.cost(id, 0, s.plan[id], s, plan);
+        // The core's levels you already have are paid for for good (a reset keeps them), so only count new ones.
+        t.cost(id, perks[id].core ? Math.min(s.cur[id], s.plan[id]) : 0, s.plan[id], s, plan);
         if (s.plan[id] > s.cur[id]) t.cost(id, s.cur[id], s.plan[id], s, up);
         else if (s.plan[id] < s.cur[id] && !perks[id].core) t.cost(id, s.plan[id], s.cur[id], s, refund);
       }
@@ -477,7 +478,9 @@ const Tree = (() => {
       const cur = blank();
       for (const id of ids) if (nodes[id]) cur[id] = Math.min(perks[id].max, +nodes[id] || 0);
       const xp = ((st.experience || {})[cfg.node]) || 0;
-      const have = cfg.powderOf(m);
+      // What a reset would give you: the API's "spent" includes the core, which a reset never refunds.
+      const coreCost = t.coreId ? t.cost(t.coreId, 0, cur[t.coreId], s) : {};
+      const have = cfg.powderOf(m, coreCost);
       const changed = U.changed(cfg.storeKey, [cur, xp]) || fresh || !s.fromProfile;
       s.cur = cur; s.curAbility = (st.selected_ability || {})[cfg.node] || '';
       s.have = have;

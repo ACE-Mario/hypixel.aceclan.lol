@@ -46,11 +46,13 @@ const PRESETS = [
   },
 ];
 
-const powderOf = m => {
+// Whispers a reset would give you: unspent plus spent, minus what's in Center of the Forest (never refunded).
+const powderOf = (m, core = {}) => {
   const w = (m.foraging_core || {}).whispers || {};
   const get = k => {
     const o = w[k] || {};
-    return (o.total || 0) + Object.keys(o).filter(n => /^\d+$/.test(n)).reduce((s, n) => Math.max(s, (o[n] || {}).spent || 0), 0);
+    const spent = Object.keys(o).filter(n => /^\d+$/.test(n)).reduce((s, n) => Math.max(s, (o[n] || {}).spent || 0), 0);
+    return (o.total || 0) + Math.max(0, spent - (core[k.toUpperCase() + '_WHISPERS'] || 0));
   };
   return { FOREST_WHISPERS: get('forest'), DESERT_WHISPERS: get('desert') };
 };

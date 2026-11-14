@@ -481,9 +481,13 @@ const Gear = (() => {
         cum[id].push(acc);
       }
     }
+    // Your Core of the Mountain levels are paid for for good (a reset keeps them, and "powder you own" leaves
+    // them out), so the core only costs the levels above yours.
+    const corePaid = t.coreId ? cum[t.coreId][s.cur[t.coreId] || 0] : {};
     const spent = lv => {
       const n = {};
       for (const id of t.ids) { const c = cum[id][lv[id] || 0]; for (const k in c) n[k] = (n[k] || 0) + c[k]; }
+      for (const k in corePaid) n[k] -= corePaid[k];
       return n;
     };
     const tokensLeft = lv => t.tokensAt(s.tier, t.coreId ? lv[t.coreId] : 0) - t.tokensUsed(lv);

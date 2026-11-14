@@ -68,9 +68,10 @@ const PRESETS = [
   },
 ];
 
-const powderOf = m => {
+// Powder a reset would give you: unspent plus spent, minus what's in Core of the Mountain (never refunded).
+const powderOf = (m, core = {}) => {
   const c = m.mining_core || {};
-  const get = k => (c['powder_' + k] || 0) + (c['powder_spent_' + k] || 0);
+  const get = k => (c['powder_' + k] || 0) + Math.max(0, (c['powder_spent_' + k] || 0) - (core[k.toUpperCase()] || 0));
   return { MITHRIL: get('mithril'), GEMSTONE: get('gemstone'), GLACITE: get('glacite') };
 };
 
