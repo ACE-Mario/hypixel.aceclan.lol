@@ -31,6 +31,8 @@ ACE Clan's Hypixel SkyBlock tools. This is a separate site from the main clan si
   from every item with that skill's stats). It reads inventory, storage, wardrobe, pets and Museum items.
 - `scripts/pet_icons.py`: makes `icons/PET_<TYPE>.png` pet head icons from the NEU pet skins.
 - `scripts/clear_icon_bg.py`: makes the solid square background on some 16px item icons transparent.
+- `mod/`: download page for the Ace Clan Hypixel Fabric mod, with the jar next to it. For a new version, copy
+  the new jar in, delete the old one, and update the file name, size and version in `mod/index.html`.
 - `config.js`: site settings, including the shared Hypixel API key every visitor uses. Development keys
   expire, so edit this file (on GitHub: Edit button) whenever the key changes.
 - `shared/`: the shared stylesheet (`site.css`) and helpers (`sb.js`: SkyBlock calendar, formatting).

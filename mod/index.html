@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ace Clan Hypixel Mod · ACE Hypixel</title>
+  <meta name="description" content="Download the Ace Clan Hypixel mod for Fabric: live SkyBlock drop trackers synced to Jerry on Discord, plus Melody's Hair and Harp helpers.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/site.css?v=20261114w">
+  <style>
+    .hero { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; padding: 20px; margin: 22px 0 8px;
+            background: linear-gradient(135deg, rgba(167,139,250,.14), rgba(63,191,127,.08)); border: 1px solid var(--line); border-radius: 14px; }
+    .hero .txt { flex: 1 1 320px; min-width: 0; }
+    .hero h2 { margin: 0; font-size: 32px; letter-spacing: 1px; }
+    .hero p { margin: 4px 0 0; color: var(--muted); }
+    .dl { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+    .dl .btn { font-size: 17px; padding: 11px 20px; }
+    .dl small { color: var(--muted); }
+    .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .pill { font-size: 12px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+    .steps { list-style: none; counter-reset: s; padding: 0; margin: 0; display: grid; gap: 10px; }
+    .steps li { counter-increment: s; position: relative; padding: 12px 14px 12px 52px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+    .steps li::before { content: counter(s); position: absolute; left: 14px; top: 12px; width: 26px; height: 26px; border-radius: 50%;
+                        display: grid; place-items: center; background: var(--accent); color: #160d2e; font-weight: 700; }
+    .steps b { display: block; }
+    .steps span { color: var(--muted); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14px; }
+    code { background: var(--card2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font-size: 13px; white-space: nowrap; }
+    table.cmd { width: 100%; border-collapse: collapse; }
+    table.cmd td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    table.cmd td:first-child { width: 1%; }
+    .scroll { overflow-x: auto; }
+    details { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 8px; }
+    summary { cursor: pointer; font-weight: 600; }
+    details p { margin: 8px 0 0; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="sitebar">
+    <div class="wrap sitebar-inner">
+      <a class="ace" href="../">ACE<span>.</span> <small>Hypixel</small></a>
+      <nav><a href="../">All tools</a></nav>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div class="hero">
+      <div class="txt">
+        <h2>Ace Clan Hypixel Mod</h2>
+        <p>Track your SkyBlock drops live with the clan. Your drops show up in Discord through Jerry, with a leaderboard for everyone playing.</p>
+        <div class="pills">
+          <span class="pill">Minecraft 26.2</span>
+          <span class="pill">Fabric</span>
+          <span class="pill">Client-side only</span>
+          <span class="pill">Version 1.7.0</span>
+        </div>
+      </div>
+      <div class="dl">
+        <a class="btn" href="ace-clan-hypixel-1.7.0.jar" download>⬇ Download the mod</a>
+        <small>ace-clan-hypixel-1.7.0.jar · 49 KB</small>
+      </div>
+    </div>
+    <p class="hint">The mod only reads chat and menus and draws on your screen. It never clicks, moves or types for you.</p>
+
+    <h3 class="section-h">Set it up</h3>
+    <ol class="steps">
+      <li><b>Install Fabric for Minecraft 26.2</b>
+        <span>Use the <a href="https://fabricmc.net/use/installer/" target="_blank" rel="noopener">Fabric installer</a>, or make a Fabric 26.2 instance in a launcher like Modrinth or Prism.</span></li>
+      <li><b>Add Fabric API</b>
+        <span>Download <a href="https://modrinth.com/mod/fabric-api" target="_blank" rel="noopener">Fabric API</a> for 26.2 and put it in your <code>mods</code> folder.</span></li>
+      <li><b>Add the Ace Clan Hypixel mod</b>
+        <span>Download the jar above and put it in the same <code>mods</code> folder, then start the game.</span></li>
+      <li><b>Link to Jerry</b>
+        <span>In the clan Discord, type <code>!jerry link</code>. Jerry sends you a private message with a command. Paste that command into Minecraft chat once. Don't share it.</span></li>
+      <li><b>Start tracking</b>
+        <span>In Minecraft, type <code>/jerry gui</code> and press Start on a tracker, or use <code>!jerry start powder</code> in Discord.</span></li>
+    </ol>
+
+    <h3 class="section-h">Trackers</h3>
+    <div class="grid">
+      <div class="card"><h3>🏰 Dungeon Chests</h3><p>What you claim from reward chests after a run.</p></div>
+      <div class="card"><h3>💎 Rare Drops</h3><p>Every RARE DROP, PET DROP and crazier.</p></div>
+      <div class="card"><h3>⛏️ Powder Mining</h3><p>Powder, gemstones and essence from Crystal Hollows chests.</p></div>
+      <div class="card"><h3>🎒 Item Pickups</h3><p>Items that land in your inventory or sacks.</p></div>
+      <div class="card"><h3>⚔️ Slayer</h3><p>Bosses slain and the rare drops from your quests.</p></div>
+      <div class="card"><h3>🎣 Fishing</h3><p>Sea creatures, treasure catches and trophy fish.</p></div>
+      <div class="card"><h3>🦅 Diana Burrows</h3><p>Burrows dug, coins, feathers and what you dig up.</p></div>
+      <div class="card"><h3>🔥 Kuudra Chests</h3><p>What you claim from Paid and Free chests.</p></div>
+      <div class="card"><h3>🐛 Garden Pests</h3><p>Pests killed and the crops they drop.</p></div>
+    </div>
+    <p class="hint">Drops are counted per player and per SkyBlock profile. Jerry keeps a live message in Discord and all-time totals.</p>
+
+    <h3 class="section-h">Also in the mod</h3>
+    <div class="grid">
+      <div class="card"><h3>🎵 Melody's Hair note</h3><p>Shows the note your Melody's Hair is tuned to while you hold it.</p></div>
+      <div class="card"><h3>🎹 Melody's Harp helper</h3><p>Highlights the next note to click in harp songs.</p></div>
+      <div class="card"><h3>⚙️ Settings screen</h3><p>Turn each feature and tracker on or off with <code>/jerry settings</code>.</p></div>
+    </div>
+
+    <h3 class="section-h">Commands</h3>
+    <div class="scroll">
+      <table class="cmd">
+        <tr><td><code>/jerry gui</code></td><td>In Minecraft. Open the tracker panel: start, stop and see live totals.</td></tr>
+        <tr><td><code>/jerry settings</code></td><td>In Minecraft. Toggle features and choose which of your drops are sent.</td></tr>
+        <tr><td><code>/jerry start &lt;tracker&gt;</code></td><td>In Minecraft. Start a tracker. <code>/jerry stop &lt;tracker&gt;</code> stops it.</td></tr>
+        <tr><td><code>/jerry status</code></td><td>In Minecraft. Check you're connected and what's running.</td></tr>
+        <tr><td><code>!jerry link</code></td><td>In Discord. Get your private link code by DM.</td></tr>
+        <tr><td><code>!jerry start &lt;tracker&gt;</code></td><td>In Discord. Start a tracker in that channel. Short names work, like <code>powder</code> or <code>rare</code>.</td></tr>
+        <tr><td><code>!jerry status</code></td><td>In Discord. See which trackers are running.</td></tr>
+      </table>
+    </div>
+
+    <h3 class="section-h">Problems?</h3>
+    <details><summary>The game says the mod needs a different version</summary>
+      <p>The mod is for Minecraft 26.2 with Fabric Loader 0.20.1 or newer. Check your instance is 26.2 and Fabric, not Forge or NeoForge.</p></details>
+    <details><summary>/jerry gui says "Not linked" or "Jerry offline"</summary>
+      <p>"Not linked" means you still need to run <code>!jerry link</code> in Discord and paste the command into Minecraft. "Jerry offline" means the bot isn't running right now. Try again later.</p></details>
+    <details><summary>Jerry can't DM me the code</summary>
+      <p>In Discord, right-click the server, open Privacy Settings and allow direct messages from server members. Then run <code>!jerry link</code> again.</p></details>
+    <details><summary>My drops aren't being counted</summary>
+      <p>The tracker has to be running (green in <code>/jerry gui</code>), and it has to be switched on for you in <code>/jerry settings</code>. If it still misses drops, say so in the clan Discord: which tracker and what you were doing.</p></details>
+    <details><summary>Is this allowed on Hypixel?</summary>
+      <p>The mod only reads what the game already shows you and draws overlays. It doesn't automate anything. As with any mod, you use it at your own risk.</p></details>
+  </main>
+
+  <footer class="wrap foot">Sea creature messages from the <a href="https://github.com/hannibal002/SkyHanni-REPO" target="_blank" rel="noopener">SkyHanni repo</a>. Not affiliated with Hypixel or Mojang.</footer>
+</body>
+</html>
