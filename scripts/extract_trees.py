@@ -20,11 +20,9 @@ HOTF_EXP = {
     'deep_waters': 2.9, 'hunters_luck': 3.2, 'galateas_might': 3.2, 'iron_lungs': 2.9,
     '250_gifts': 3.07, 'strength_boost': 3.1, 'speed_boost': 3.1, 'starlyn_supreme': 2.6,
     'efficient_forager': 2.6, 'half_empty': 4.1, 'half_full': 4.1, 'ricochet': 5.5,
-    'two_for_one': 2.45, 'essence_fortune': 3.2,
-    # Not listed on the wiki at the time of writing: estimated like the other 50-level perks on that row.
-    'forest_speed': 3.2, 'forest_strength': 3.2,
+    'two_for_one': 2.45, 'essence_fortune': 3.2, 'forest_speed': 3.4, 'forest_strength': 3.4,
 }
-HOTF_EST = {'forest_speed', 'forest_strength'}
+HOTF_EST = set()   # perks whose cost isn't on the wiki yet (shown as "cost estimated")
 HOTF_COST = {
     'daily_wishes': '(+ 200 (* 18 (+ level 1)))',
     'timber': '(pow (+ level 8) 5)',

@@ -289,9 +289,9 @@ const Gear = (() => {
   const perkSum = (perks, b, levels) => Object.entries(perks).reduce((n, [id, where]) => n + (applies(where, b) ? api.stat(id, levels[id] || 0) : 0), 0);
 
   /** Ticks to break a block: 30 × strength / speed rounded to the nearest tick (SkyBlock wiki), at least 4 unless it
-      breaks instantly. Plain blocks like Hard Stone break instantly at 30 × strength; ores, gemstones, Dwarven metals
-      and pure blocks need more than 60 ×. */
-  const instantAt = b => (b.id === 'hardstone' ? 30 * b.str : 60 * b.str + 1);
+      breaks instantly. Plain blocks (Hard Stone, pure Gold and Diamond Blocks) break instantly above 30 × strength;
+      ores, gemstones and Dwarven metals need more than 60 ×. */
+  const instantAt = b => (b.kind === 'block' ? 30 : 60) * b.str + 1;
   function ticks(speed, b) {
     if (speed <= 0) return Infinity;
     if (speed >= instantAt(b)) return 1;
@@ -390,8 +390,8 @@ const Gear = (() => {
         Glossy Mineral (+150), the Fleet reforge and the Snail pet count on blocks only, the Goblin pet in the Mines of Divan,
         and Armadillo and Mole on Hard Stone. For Hard Stone the Snail is never picked: it turns your Speed above 100 into Block Fortune,
         and powder grinding needs Speed to move through the tunnels (Armadillo also tunnels through blocks for you).
-        Break time is 30 × block strength ÷ speed, rounded to the nearest tick, with a 4-tick minimum. Hard Stone breaks instantly at 30 × its strength;
-        ores, gemstones, Dwarven metals and pure blocks need more than 60 ×.</p>
+        Break time is 30 × block strength ÷ speed, rounded to the nearest tick, with a 4-tick minimum. Hard Stone and pure Gold and Diamond Blocks
+        break instantly above 30 × their strength; ores, gemstones and Dwarven metals need more than 60 ×.</p>
       <div class="controls"><button type="button" class="btn" id="gTune">Tune this plan for ${U.esc(b.name)}</button></div>
       <div id="gMsg">${note ? `<p class="hint">${note}</p>` : ''}</div>`;
     note = '';
