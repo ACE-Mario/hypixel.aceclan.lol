@@ -1,0 +1,10 @@
+{
+  "version": "1.14.0",
+  "file": "ace-clan-hypixel-1.14.0.jar",
+  "sha256": "3e931132a9050911be9761040565e9600a88f556aef6567499e9bcd76bbcaaa6",
+  "notes": [
+    "The mod now tells you when there's an update and can install it for you",
+    "Nucleus Runs tracker for Crystal Nucleus runs (/jerry nucleus)",
+    "Favorites get their own row in the storage viewer"
+  ]
+}
