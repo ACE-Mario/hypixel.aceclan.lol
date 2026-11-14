@@ -270,6 +270,7 @@ const Tree = (() => {
         <h3>${U.esc(p.name)}</h3>
         <div class="muted">${[`Tier ${p.tier}`, p.max > 1 ? `max level ${p.max}` : 'one level',
           p.powder && !p.powder.startsWith('(') ? pname(p.powder) : '', p.core ? 'Doesn\'t use a token' : '',
+          p.core && s.cur[s.sel] ? `Can't go below your level ${s.cur[s.sel]}: a reset never refunds it or the powder in it` : '',
           p.est ? '<span title="Not listed on the wiki yet">cost estimated</span>' : ''].filter(Boolean).join(' · ')}</div>
         ${issues.map(i => `<p class="ht-warn">${U.esc(i)}</p>`).join('')}
         <div class="ht-levels">
@@ -413,7 +414,9 @@ const Tree = (() => {
 
     function setLevel(id, v) {
       const p = perks[id];
-      s.plan[id] = Math.max(0, Math.min(p.max, Math.round(+v || 0)));
+      // A reset never refunds the core (or the powder in it), so it can't go below the level you have.
+      const min = p.core ? s.cur[id] || 0 : 0;
+      s.plan[id] = Math.max(min, Math.min(p.max, Math.round(+v || 0)));
       if (p.ability && !s.plan[id] && s.ability === id) s.ability = '';
       if (p.ability && s.plan[id] && !s.ability) s.ability = id;
       render();
