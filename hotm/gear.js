@@ -39,8 +39,49 @@ const Gear = (() => {
   const GOD_POT = { speed: 200, fortune: 25 }; // Haste IV and Spelunker V
 
   let g = U.readLS(KEY, null) || {};
-  g = { block: g.block || 'ruby', shaft: !!g.shaft, otherSpeed: g.otherSpeed || 0, otherFortune: g.otherFortune || 0, otherSpread: g.otherSpread || 0, sheer: !!g.sheer, speedStat: g.speedStat || 0, pick: g.pick || {}, god: g.god !== false, mall: g.mall || '', noMall: g.noMall !== false };
+  g = { block: g.block || 'ruby', shaft: !!g.shaft, otherSpeed: g.otherSpeed || 0, otherFortune: g.otherFortune || 0, otherSpread: g.otherSpread || 0, sheer: !!g.sheer, speedStat: g.speedStat || 0, pick: g.pick || {}, extra: g.extra || [], god: g.god !== false, mall: g.mall || '', noMall: g.noMall !== false };
   let owned = null;   // slot -> [{ key, name, speed, fortune: {all, gem, metal, block}, pristine }]
+  let apiOwned = null; // what the profile API shows, before adding sets you ticked
+  let noWardrobe = false;
+  // Mining armour sets with their base stats, from Hypixel's public item list. Your wardrobe isn't always on the
+  // API, so you can tick the sets you own there.
+  const ARMOR_CAT = { HELMET: 'helmet', CHESTPLATE: 'chest', LEGGINGS: 'legs', BOOTS: 'boots' };
+  const STAT_KEYS = ['MINING_SPEED', 'MINING_FORTUNE', 'BLOCK_FORTUNE', 'GEMSTONE_FORTUNE', 'DWARVEN_METAL_FORTUNE', 'PRISTINE'];
+  let catalog = null, catalogLoading = false;
+  async function loadCatalog() {
+    if (catalog || catalogLoading) return;
+    catalogLoading = true;
+    try {
+      const r = await fetch('https://api.hypixel.net/v2/resources/skyblock/items').then(x => x.json());
+      const sets = new Map();
+      for (const i of r.items || []) {
+        const slot = ARMOR_CAT[i.category], st = i.stats || {};
+        if (!slot || !STAT_KEYS.some(k => st[k])) continue;
+        const name = U.plain(i.name || i.id);
+        const set = name.replace(/\b(Helmet|Chestplate|Leggings|Boots)\b/i, '').replace(/^\s*of\s+/i, '').replace(/\s+/g, ' ').trim() || name;   // "Boots of Divan" -> "Divan"
+        if (!sets.has(set)) sets.set(set, []);
+        const fixed = MINERAL[(i.id.match(/^(GLOSSY_MINERAL|MINERAL)_/) || [])[1]] || { spread: 0 };
+        sets.get(set).push({
+          key: 'extra:' + i.id, id: i.id, slot, extra: true, worn: false, museum: false, drill: false, name, rawName: name,
+          lore: ['§8Base stats (no reforge, enchants or gems)', ...STAT_KEYS.filter(k => st[k]).map(k => `§7${U.pretty(k)}: §a+${U.num(st[k])}`)],
+          speed: st.MINING_SPEED || 0, pristine: st.PRISTINE || 0, spread: 0, spreadBlock: fixed.spread,
+          fortune: { all: st.MINING_FORTUNE || 0, gem: st.GEMSTONE_FORTUNE || 0, metal: st.DWARVEN_METAL_FORTUNE || 0, block: st.BLOCK_FORTUNE || 0 },
+        });
+      }
+      catalog = [...sets].map(([set, pieces]) => ({ set, pieces })).sort((a, c) => a.set.localeCompare(c.set));
+    } catch (e) { console.error(e); catalog = []; }
+    rebuild();
+    if (api) render(api);
+  }
+  /** Your gear: what the API shows plus the sets you ticked (skipping pieces the API already has). */
+  function rebuild() {
+    const extra = (catalog || []).filter(x => g.extra.includes(x.set)).flatMap(x => x.pieces);
+    if (!apiOwned && !extra.length) { owned = null; return; }
+    owned = Object.fromEntries(SLOTS.map(([k]) => {
+      const mine = (apiOwned && apiOwned[k]) || [];
+      return [k, [...mine, ...extra.filter(x => x.slot === k && !mine.some(m => m.id === x.id))]];
+    }));
+  }
   let api = null;
   let acc = null;     // accessory bag totals { speed, fortune, pristine, n }
   let skill = null;   // Mining skill level
@@ -129,6 +170,7 @@ const Gear = (() => {
     const sources = [inv.inv_armor, inv.equipment_contents, inv.inv_contents, inv.ender_chest_contents, inv.wardrobe_contents,
       inv.personal_vault_contents, ...Object.values(inv.backpack_contents || {})];
     owned = Object.fromEntries(SLOTS.map(([k]) => [k, []]));
+    noWardrobe = !inv.wardrobe_contents;
     const xp = ((d.member.player_data || {}).experience || {}).SKILL_MINING;
     skill = xp === undefined ? null : SKILL_XP.filter(n => xp >= n).length;
     const bag = (inv.bag_contents || {}).talisman_bag;
@@ -195,6 +237,8 @@ const Gear = (() => {
         speed: 0, fortune: { all: 0, gem: 0, metal: 0, block: 0 }, pristine: 0,
       });
     }
+    apiOwned = owned;
+    rebuild();
   }
 
   const fortuneFor = (x, b) => x.fortune.all + (x.fortune[b.kind] || 0);
@@ -302,6 +346,7 @@ const Gear = (() => {
 
   function render(a) {
     api = a;
+    if (!catalog) loadCatalog();
     const host = $('#gear');
     if (!host) return;
     const b = blockOf();
@@ -355,6 +400,10 @@ const Gear = (() => {
         : '<p class="hint">No mining gear found on your profile. Turn on the Inventory API in SkyBlock settings, or type your stats under "Other".</p>')
         : '<p class="hint">Log in to read your armour, equipment, pet and pickaxe or drill, or type your total stats under "Other".</p>'}
       ${slotRows ? `<p class="hint">The best gear and pet you own for ${U.esc(b.name)} are picked for you. Anything marked "equip this" isn't on you right now.</p>` : ''}
+      <details class="gh-extra"${g.extra.length || noWardrobe ? ' open' : ''}><summary>Armour the API can't see${g.extra.length ? ` (${g.extra.length} ticked)` : ''}</summary>
+        <p class="hint">${noWardrobe ? '<b>Your wardrobe isn\'t on the API</b>, so the sets in it are missing above. ' : ''}Tick the mining sets you own that aren't shown, and they're counted with their base stats (no reforge, enchants or gems).</p>
+        <div class="chips">${catalog ? catalog.map(x => `<label class="chip"><input type="checkbox" data-gextra="${U.esc(x.set)}" ${g.extra.includes(x.set) ? 'checked' : ''}> ${U.esc(x.set)}</label>`).join('') : '<span class="muted">Loading the item list…</span>'}</div>
+      </details>
       <div class="controls">
         <label class="field">Other Mining Speed <input type="number" id="gSpeed" min="0" value="${g.otherSpeed || ''}" placeholder="0" style="width:120px"></label>
         <label class="field">Other fortune <input type="number" id="gFort" min="0" value="${g.otherFortune || ''}" placeholder="0" style="width:120px"></label>
@@ -622,6 +671,11 @@ const Gear = (() => {
     else if (el.id === 'gSheer') g.sheer = el.checked;
     else if (el.id === 'gSpeedStat') g.speedStat = Math.max(0, +el.value || 0);
     else if (el.dataset.slot) g.pick[el.dataset.slot] = el.value;
+    else if (el.dataset.gextra !== undefined) {
+      g.extra = g.extra.filter(x => x !== el.dataset.gextra);
+      if (el.checked) g.extra.push(el.dataset.gextra);
+      rebuild();
+    }
     else return;
     save();
     if (api) render(api);
