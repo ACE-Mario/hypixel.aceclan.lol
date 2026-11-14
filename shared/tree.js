@@ -402,7 +402,8 @@ const Tree = (() => {
         levels = build();
       }
       s.plan = levels;
-      s.ability = p.ability && levels[p.ability] ? p.ability : abilities.find(a => levels[a]) || '';
+      // The preset's ability, or its fallback when the tier can't reach it yet (e.g. Sheer Force needs HotM 10).
+      s.ability = [p.ability, p.fallback].find(a => a && levels[a]) || abilities.find(a => levels[a]) || '';
       if (cfg.onPreset) cfg.onPreset(p);
       render();
       // Scroll to what the preset changes first (HotM: the gear panel), else the tree.

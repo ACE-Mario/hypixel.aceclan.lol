@@ -6,10 +6,10 @@ const Gear = (() => {
   const KEY = 'ace-hypixel.hotm-gear.v1';
   // Block strength (SkyBlock wiki). kind decides which perks and fortune types apply.
   const BLOCKS = [
-    ['ruby', 'Ruby', 2300, 'gem'], ['amber', 'Amber', 3000, 'gem'], ['amethyst', 'Amethyst', 3000, 'gem'],
+    ['ruby', 'Ruby', 2500, 'gem'], ['amber', 'Amber', 3000, 'gem'], ['amethyst', 'Amethyst', 3000, 'gem'],
     ['jade', 'Jade', 3000, 'gem'], ['sapphire', 'Sapphire', 3000, 'gem'], ['opal', 'Opal', 3000, 'gem'],
-    ['topaz', 'Topaz', 3800, 'gem'], ['jasper', 'Jasper', 4800, 'gem'], ['aquamarine', 'Aquamarine', 5200, 'gem'],
-    ['citrine', 'Citrine', 5200, 'gem'], ['onyx', 'Onyx', 5200, 'gem'], ['peridot', 'Peridot', 5200, 'gem'],
+    ['topaz', 'Topaz', 3500, 'gem'], ['jasper', 'Jasper', 4000, 'gem'], ['aquamarine', 'Aquamarine', 4000, 'gem'],
+    ['citrine', 'Citrine', 4000, 'gem'], ['onyx', 'Onyx', 4000, 'gem'], ['peridot', 'Peridot', 4000, 'gem'],
     ['mithril1', 'Mithril (grey)', 500, 'metal'], ['mithril2', 'Mithril (prismarine)', 800, 'metal'],
     ['mithril3', 'Mithril (blue wool)', 1500, 'metal'], ['titanium', 'Titanium', 2000, 'metal'],
     ['umber', 'Umber', 5600, 'metal'], ['tungsten', 'Tungsten', 5600, 'metal'], ['glacite', 'Glacite', 6000, 'metal'],
@@ -288,16 +288,17 @@ const Gear = (() => {
   }
   const perkSum = (perks, b, levels) => Object.entries(perks).reduce((n, [id, where]) => n + (applies(where, b) ? api.stat(id, levels[id] || 0) : 0), 0);
 
-  /** Ticks to break a block: ceil(30 × strength / speed), at least 4 unless it breaks instantly. Plain blocks like
-      Hard Stone break instantly at 30 × strength; ores, gemstones, Dwarven metals and pure blocks need more than 60 ×. */
+  /** Ticks to break a block: 30 × strength / speed rounded to the nearest tick (SkyBlock wiki), at least 4 unless it
+      breaks instantly. Plain blocks like Hard Stone break instantly at 30 × strength; ores, gemstones, Dwarven metals
+      and pure blocks need more than 60 ×. */
   const instantAt = b => (b.id === 'hardstone' ? 30 * b.str : 60 * b.str + 1);
   function ticks(speed, b) {
     if (speed <= 0) return Infinity;
     if (speed >= instantAt(b)) return 1;
-    return Math.max(4, Math.ceil(30 * b.str / speed));
+    return Math.max(4, Math.round(30 * b.str / speed));
   }
-  /** Least speed that breaks the block in `t` ticks. */
-  const speedFor = (t, b) => (t === 1 ? instantAt(b) : 30 * b.str / t);
+  /** Least whole speed that breaks the block in `t` ticks (rounds to t once 30 × strength / speed is below t + 0.5). */
+  const speedFor = (t, b) => (t === 1 ? instantAt(b) : Math.floor(30 * b.str / (t + 0.5)) + 1);
 
   function render(a) {
     api = a;
@@ -389,7 +390,7 @@ const Gear = (() => {
         Glossy Mineral (+150), the Fleet reforge and the Snail pet count on blocks only, the Goblin pet in the Mines of Divan,
         and Armadillo and Mole on Hard Stone. For Hard Stone the Snail is never picked: it turns your Speed above 100 into Block Fortune,
         and powder grinding needs Speed to move through the tunnels (Armadillo also tunnels through blocks for you).
-        Break time is ⌈30 × block strength ÷ speed⌉ ticks with a 4-tick minimum. Hard Stone breaks instantly at 30 × its strength;
+        Break time is 30 × block strength ÷ speed, rounded to the nearest tick, with a 4-tick minimum. Hard Stone breaks instantly at 30 × its strength;
         ores, gemstones, Dwarven metals and pure blocks need more than 60 ×.</p>
       <div class="controls"><button type="button" class="btn" id="gTune">Tune this plan for ${U.esc(b.name)}</button></div>
       <div id="gMsg"></div>`;
