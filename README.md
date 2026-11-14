@@ -11,8 +11,10 @@ ACE Clan's Hypixel SkyBlock tools. This is a separate site from the main clan si
 - `events/`: Event Timers. Countdowns worked out from the SkyBlock calendar.
 - `mayor/`: Mayor Tracker. Current mayor, minister and election votes from the public Hypixel API.
 - `greenhouse/`: Greenhouse Planner. 10x10 layout editor with crop effects, growth cycle time and
-  mutation spots. The crop and mutation facts live in `greenhouse/data.js`, copied by hand from the
-  wiki's Greenhouse and Mutations pages, so update that file when Hypixel changes mutations.
+  mutation spots, plus an Auto-planner tab: pick mutations and how many (or Max), block slots, and it
+  packs the targets and their ingredients onto your unlocked slots (`autoPlan` in `greenhouse/app.js`).
+  The crop and mutation facts live in `greenhouse/data.js`, copied by hand from the wiki's Greenhouse
+  and Mutations pages, so update that file when Hypixel changes mutations.
 - `shards/`: Attribute Shards. Level tracker and fusion planner (cheapest time to each shard).
 - `talismans/`: Talisman Tracker. Magical Power, missing accessories (only the next tier in each upgrade
   line by default) and how to get each one. Reads the Accessory Bag when logged in.
