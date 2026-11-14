@@ -91,8 +91,7 @@ const Tree = (() => {
       for (const [lv, k] of Object.entries(data.coreTokens)) if (coreLv >= +lv) n += k;
       return n;
     }
-    // Every unlocked perk uses a token, the core included (its level 1 gives one back).
-    const tokensUsed = levels => ids.filter(id => levels[id] > 0).length;
+    const tokensUsed = levels => ids.filter(id => !perks[id].core && levels[id] > 0).length;
 
     /** Perks that are levelled but not connected back to the first perk. */
     function disconnected(levels) {
@@ -271,7 +270,8 @@ const Tree = (() => {
       $('#detail').innerHTML = `
         <h3>${U.esc(p.name)}</h3>
         <div class="muted">${[`Tier ${p.tier}`, p.max > 1 ? `max level ${p.max}` : 'one level',
-          p.powder && !p.powder.startsWith('(') ? pname(p.powder) : '',          p.core && s.cur[s.sel] ? `Can't go below your level ${s.cur[s.sel]}: a reset never refunds it or the powder in it` : '',
+          p.powder && !p.powder.startsWith('(') ? pname(p.powder) : '', p.core ? 'Doesn\'t use a token' : '',
+          p.core && s.cur[s.sel] ? `Can't go below your level ${s.cur[s.sel]}: a reset never refunds it or the powder in it` : '',
           p.est ? '<span title="Not listed on the wiki yet">cost estimated</span>' : ''].filter(Boolean).join(' · ')}</div>
         ${issues.map(i => `<p class="ht-warn">${U.esc(i)}</p>`).join('')}
         <div class="ht-levels">
@@ -285,7 +285,7 @@ const Tree = (() => {
         <div class="ht-cost">
           ${v > c ? `<div><span class="muted">${c} → ${v}:</span> ${costLine(t.cost(id, c, v, s))}</div>` : ''}
           ${step ? `<div><span class="muted">Next level:</span> ${costLine({ [step[0]]: step[1] })}</div>` : ''}
-          ${v > 0 ? `<div><span class="muted">All ${v} level${v > 1 ? 's' : ''} in total:</span> ${costLine(t.cost(id, 0, v, s))} + 1 token</div>` : ''}
+          ${v > 0 ? `<div><span class="muted">All ${v} level${v > 1 ? 's' : ''} in total:</span> ${costLine(t.cost(id, 0, v, s))}${p.core ? '' : ' + 1 token'}</div>` : ''}
         </div>`;
     }
 
