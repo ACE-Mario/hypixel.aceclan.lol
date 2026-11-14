@@ -28,6 +28,14 @@ HOTF_COST = {
     'timber': '(pow (+ level 8) 5)',
 }
 
+# Heart of the Mountain costs where NEU is out of date, from the SkyBlock wiki (each checked against the
+# wiki's total to max: Quick Forge 93,838, Mole 6,646,936, Subterranean Fisher 945,621).
+HOTM_COST = {
+    'quick_forge': '(pow (+ level 2) 3.2)',
+    'mole': '(pow (+ level 2) 2.17883)',
+    'subterranean_fisher': '(pow (+ level 2) 3.07)',
+}
+
 TREES = {
     'hotm': {
         'file': 'hotmlayout.json', 'rows': 10,
@@ -65,6 +73,8 @@ def main(zpath):
                 elif pid in HOTF_EXP:
                     cost = f'(pow (+ level 2) {HOTF_EXP[pid]})'
                     est = pid in HOTF_EST
+            if key == 'hotm' and pid in HOTM_COST:
+                cost = HOTM_COST[pid]
             if key == 'hotm' and pid == 'core_of_the_mountain':
                 # NEU's list is out of date: the wiki has levels 4-7 on Gemstone and 8-10 on Glacite powder.
                 cost = '(list.at (list.new 0 50000 100000 200000 300000 400000 500000 750000 1000000 1250000 0) level)'
