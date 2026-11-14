@@ -2,120 +2,128 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Live Clan Map · ACE Hypixel</title>
-  <meta name="description" content="See where clan members are in Hypixel SkyBlock right now, on a top-down map of each island.">
+  <meta name="description" content="See where clan members are in Hypixel SkyBlock right now, on one top-down map of every island.">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../shared/site.css?v=20261114w">
   <style>
-    .status { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--line);
-              border-radius: 999px; background: var(--card); color: var(--muted); font-size: 14px; white-space: nowrap; }
-    .status i { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
-    .status.live i { background: var(--accent2); box-shadow: 0 0 0 3px rgba(63,191,127,.25); }
-    .status.off i { background: var(--danger); }
-    .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 12px; }
-    .tab { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px;
-           padding: 5px 12px; font: inherit; font-size: 14px; cursor: pointer; display: inline-flex; gap: 7px; align-items: center; }
-    .tab:hover { border-color: var(--accent); }
-    .tab[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #160d2e; font-weight: 600; }
-    .tab b { font-size: 12px; min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--accent2); color: #08130d; }
-    .tab.nomap { border-style: dashed; }
-    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
-    @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
-    .mapbox { position: relative; background: var(--bg2); border: 1px solid var(--line); border-radius: var(--radius);
-              overflow: hidden; touch-action: none; cursor: grab; user-select: none; }
-    .mapbox.drag { cursor: grabbing; }
-    .stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
-    .stage > img { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
-    .stage.grid { background-color: var(--bg2);
-                  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); }
-    .pin { position: absolute; transform: translate(-50%, -50%) scale(var(--inv, 1)); display: flex; flex-direction: column;
-           align-items: center; gap: 2px; pointer-events: auto; cursor: pointer; z-index: 2; }
-    .pin .face { width: 26px; height: 26px; border-radius: 6px; border: 2px solid #fff; background: var(--card2);
-                 box-shadow: 0 2px 6px rgba(0,0,0,.6); image-rendering: pixelated; display: grid; place-items: center;
-                 font-weight: 700; font-size: 12px; color: var(--text); overflow: hidden; }
-    .pin .face img { width: 100%; height: 100%; display: block; }
-    .pin .tag { font-size: 12px; font-weight: 600; padding: 1px 6px; border-radius: 6px; background: rgba(13,15,20,.85);
-                color: #fff; white-space: nowrap; }
-    .pin.stale { opacity: .5; }
-    .pin.flash .face { animation: flash 1.2s ease-out 2; }
-    @keyframes flash { 0% { box-shadow: 0 0 0 0 rgba(167,139,250,.9); } 100% { box-shadow: 0 0 0 18px rgba(167,139,250,0); } }
-    @media (prefers-reduced-motion: reduce) { .pin.flash .face { animation: none; outline: 3px solid var(--accent); } }
-    .ctrls { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 3; }
-    .ctrls button { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line); background: rgba(24,28,37,.92);
-                    color: var(--text); font-size: 18px; cursor: pointer; }
-    .ctrls button:hover { border-color: var(--accent); }
-    .coords { position: absolute; left: 10px; bottom: 10px; z-index: 3; font-size: 13px; padding: 3px 8px; border-radius: 6px;
-              background: rgba(13,15,20,.85); color: var(--muted); font-variant-numeric: tabular-nums; }
-    .note { position: absolute; left: 10px; top: 10px; right: 56px; z-index: 3; font-size: 13px; padding: 6px 10px; border-radius: 8px;
-            background: rgba(13,15,20,.88); color: var(--muted); }
-    .side h3 { margin: 0 0 8px; font-size: 16px; }
-    .plist { display: grid; gap: 8px; }
-    .prow { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: center; padding: 9px 10px; text-align: left;
-            background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); color: var(--text);
-            font: inherit; cursor: pointer; width: 100%; }
-    .prow:hover { border-color: var(--accent); }
-    .prow .face { width: 34px; height: 34px; border-radius: 6px; background: var(--card2); overflow: hidden; display: grid;
-                  place-items: center; font-weight: 700; image-rendering: pixelated; }
-    .prow .face img { width: 100%; height: 100%; display: block; }
-    .prow b { display: block; }
-    .prow small { display: block; color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .empty { padding: 14px; border: 1px dashed var(--line); border-radius: var(--radius); color: var(--muted); font-size: 14px; }
-    .how { margin-top: 14px; }
-    .how ol { margin: 6px 0 0; padding-left: 20px; color: var(--muted); font-size: 14px; }
-    .how code { background: var(--card2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font-size: 13px; }
+    :root {
+      --bg: #0b0d12; --panel: rgba(20, 23, 31, .92); --panel2: #1d212c; --line: #2c3142;
+      --text: #e8e8e8; --muted: #9ca3af; --accent: #a78bfa; --live: #3fbf7f; --bad: #e2585b;
+    }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+                 font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+    #map { position: fixed; inset: 0; background: var(--bg); }
+    .leaflet-container { background: var(--bg); font: inherit; }
+    .leaflet-image-layer { image-rendering: pixelated; }
+    .leaflet-control-zoom a { background: var(--panel) !important; color: var(--text) !important; border-color: var(--line) !important;
+                              width: 34px !important; height: 34px !important; line-height: 32px !important; font-size: 18px !important; }
+    .leaflet-control-zoom a:hover { background: var(--panel2) !important; }
+    .leaflet-bar { border: 1px solid var(--line) !important; box-shadow: 0 4px 14px rgba(0,0,0,.45) !important; }
+    .leaflet-control-attribution { background: rgba(11,13,18,.75) !important; color: var(--muted) !important; font-size: 11px; }
+    .leaflet-control-attribution a { color: var(--accent) !important; }
+
+    /* Coordinates box, bottom left (like squaremap) */
+    .box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px;
+           box-shadow: 0 4px 14px rgba(0,0,0,.45); backdrop-filter: blur(6px); }
+    .coords { font-variant-numeric: tabular-nums; color: var(--text); min-width: 150px; }
+    .coords small { display: block; color: var(--muted); font-size: 12px; }
+
+    /* Brand, top left under the zoom buttons */
+    .brand { display: block; text-decoration: none; color: var(--text); font-family: Rajdhani, system-ui, sans-serif;
+             font-weight: 700; font-size: 18px; letter-spacing: .5px; }
+    .brand span { color: var(--accent); }
+    .brand small { color: var(--muted); font-family: system-ui, sans-serif; font-weight: 500; font-size: 12px; margin-left: 4px; }
+
+    /* Island name labels */
+    .isl-label { color: #fff; font-family: Rajdhani, system-ui, sans-serif; font-weight: 700; font-size: 15px; white-space: nowrap;
+                 text-shadow: 0 0 4px #000, 0 0 8px #000; transform: translate(-50%, -100%); pointer-events: none; }
+
+    /* Player markers */
+    .pl { position: relative; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .pl .face { width: 24px; height: 24px; border-radius: 4px; border: 2px solid #fff; background: var(--panel2); overflow: hidden;
+                box-shadow: 0 2px 6px rgba(0,0,0,.7); display: grid; place-items: center; font-weight: 700; font-size: 12px; image-rendering: pixelated; }
+    .pl .face img { width: 100%; height: 100%; display: block; }
+    .pl .name { font-size: 12px; font-weight: 600; padding: 1px 6px; border-radius: 5px; background: rgba(11,13,18,.85); white-space: nowrap; }
+    .pl.stale { opacity: .5; }
+    .pl.flash .face { animation: flash 1.1s ease-out 2; }
+    @keyframes flash { 0% { box-shadow: 0 0 0 0 rgba(167,139,250,.95); } 100% { box-shadow: 0 0 0 20px rgba(167,139,250,0); } }
+
+    /* Sidebar, right (like squaremap) */
+    #side { position: fixed; top: 10px; right: 10px; bottom: 10px; width: 270px; z-index: 1000; display: flex; flex-direction: column;
+            background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,.5);
+            backdrop-filter: blur(6px); transition: transform .3s ease, opacity .3s ease; }
+    #side.closed { transform: translateX(calc(100% + 20px)); opacity: 0; pointer-events: none; }
+    .side-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 12px 10px; border-bottom: 1px solid var(--line); }
+    .side-head h1 { margin: 0; font-family: Rajdhani, system-ui, sans-serif; font-size: 20px; letter-spacing: .5px; }
+    .status { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+    .status i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .status.live i { background: var(--live); box-shadow: 0 0 0 3px rgba(63,191,127,.25); }
+    .status.off i { background: var(--bad); }
+    .side-body { overflow-y: auto; padding: 8px 10px 12px; flex: 1; }
+    .side-body h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 10px 4px 6px; }
+    .row { display: flex; align-items: center; gap: 9px; width: 100%; padding: 6px 6px; border: 0; border-radius: 7px; background: none;
+           color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+    .row:hover { background: var(--panel2); }
+    .row:disabled { cursor: default; }
+    .row:disabled:hover { background: none; }
+    .row .face { width: 26px; height: 26px; flex: none; border-radius: 4px; background: var(--panel2); overflow: hidden; display: grid;
+                 place-items: center; font-weight: 700; image-rendering: pixelated; }
+    .row .face img { width: 100%; height: 100%; display: block; }
+    .row .txt { min-width: 0; }
+    .row b { display: block; font-weight: 600; }
+    .row small { display: block; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row .n { margin-left: auto; font-size: 12px; min-width: 20px; text-align: center; padding: 0 6px; border-radius: 999px;
+              background: var(--live); color: #08130d; font-weight: 700; }
+    .empty { color: var(--muted); font-size: 13px; padding: 6px; }
+    .how { color: var(--muted); font-size: 12px; padding: 8px 6px 0; border-top: 1px solid var(--line); margin-top: 10px; }
+    .how code { background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+    .how a, .side-head a { color: var(--accent); }
+    .icon-btn { width: 30px; height: 30px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel2); color: var(--text);
+                font-size: 16px; cursor: pointer; display: grid; place-items: center; }
+    .icon-btn:hover { border-color: var(--accent); }
+    #open { position: fixed; top: 10px; right: 10px; z-index: 999; width: auto; padding: 0 12px; height: 36px; gap: 8px;
+            display: flex; align-items: center; background: var(--panel); box-shadow: 0 4px 14px rgba(0,0,0,.45); }
+    #open[hidden] { display: none; }
+    @media (max-width: 640px) {
+      #side { top: auto; left: 10px; right: 10px; width: auto; height: 55%; }
+      #side.closed { transform: translateY(calc(100% + 20px)); }
+      .coords { min-width: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) { #side { transition: none; } .pl.flash .face { animation: none; outline: 3px solid var(--accent); } }
   </style>
 </head>
 <body>
-  <div class="sitebar">
-    <div class="wrap sitebar-inner">
-      <a class="ace" href="../">ACE<span>.</span> <small>Hypixel</small></a>
-      <nav><a href="../">All tools</a></nav>
-    </div>
-  </div>
+  <div id="map" role="application" aria-label="Live clan map"></div>
 
-  <main class="wrap">
-    <div class="page-head">
+  <button type="button" class="icon-btn" id="open" aria-label="Show the player list" hidden>☰ <span id="openCount">Players</span></button>
+
+  <aside id="side" aria-label="Players and islands">
+    <div class="side-head">
       <div>
-        <h2>Live Clan Map</h2>
-        <p>Where clan members are in SkyBlock right now. Updates every couple of seconds.</p>
+        <h1>Live Clan Map</h1>
+        <div class="status" id="status" role="status"><i></i><span>Connecting to Jerry…</span></div>
       </div>
-      <div class="status" id="status" role="status"><i></i><span>Connecting to Jerry…</span></div>
+      <button type="button" class="icon-btn" id="close" aria-label="Hide the player list">✕</button>
     </div>
-
-    <div class="tabs" id="tabs" role="toolbar" aria-label="Islands"></div>
-
-    <div class="layout">
-      <div class="mapbox" id="mapbox" aria-label="Island map">
-        <div class="stage" id="stage"></div>
-        <div class="ctrls">
-          <button type="button" id="zin" aria-label="Zoom in">+</button>
-          <button type="button" id="zout" aria-label="Zoom out">−</button>
-          <button type="button" id="zfit" aria-label="Fit the whole island">⤢</button>
-        </div>
-        <div class="note" id="note" hidden></div>
-        <div class="coords" id="coords">Hover the map for coordinates</div>
+    <div class="side-body">
+      <h2>Players</h2>
+      <div id="players"></div>
+      <h2>Islands</h2>
+      <div id="islands"></div>
+      <div class="how">
+        To show up: install the <a href="../mod/">Ace Clan Hypixel mod</a>, link it to Jerry, then turn on
+        <b>Share my location</b> in <code>/jerry settings</code>. It's off until you turn it on, and on your
+        private island the map only shows that you're home.
       </div>
-
-      <aside class="side">
-        <h3>Online now</h3>
-        <div class="plist" id="plist"></div>
-        <div class="how">
-          <h3>Show up on the map</h3>
-          <ol>
-            <li>Install the <a href="../mod/">Ace Clan Hypixel mod</a> and link it to Jerry.</li>
-            <li>In Minecraft, open <code>/jerry settings</code> and switch on <b>Share my location</b>.</li>
-          </ol>
-          <p class="hint">It's off until you turn it on. On your private island the map only shows that you're home.</p>
-        </div>
-      </aside>
     </div>
-  </main>
+  </aside>
 
-  <footer class="wrap foot">Island maps from <a href="https://github.com/dediamondpro/skyguide" target="_blank" rel="noopener">SkyGuide</a> by DeDiamondPro (<a href="SKYGUIDE-LICENSE.txt">GPL-3.0</a>). Not affiliated with Hypixel or Mojang.</footer>
-  <script src="islands.js?v=20261114m"></script>
-  <script src="app.js?v=20261114m"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="islands.js?v=20261114n"></script>
+  <script src="app.js?v=20261114n"></script>
 </body>
 </html>
