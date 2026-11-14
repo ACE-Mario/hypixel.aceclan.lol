@@ -203,7 +203,7 @@ const Gear = (() => {
   const valueFor = (x, b) => fortuneFor(x, b) + spreadFor(x, b) * 10 + (b.kind === 'gem' ? (x.pristine || 0) * 50 : 0);
   // A preset picks what you mine, so the gear is chosen for it (keeps your pick if it's already the right kind).
   const PRESET_BLOCK = { gems: ['gem', 'ruby'], blocks: [['goldblock', 'diamondblock'], 'goldblock'], powder: [['hardstone'], 'hardstone'],
-    mithril: [['mithril1', 'mithril2', 'mithril3', 'titanium'], 'mithril1'], glacite: [['umber', 'tungsten', 'glacite'], 'glacite'] };
+    mithril: [['mithril1', 'mithril2', 'mithril3', 'titanium'], 'mithril1'], comms: [['mithril1', 'mithril2', 'mithril3', 'titanium'], 'mithril1'], glacite: [['umber', 'tungsten', 'glacite'], 'glacite'] };
   function preset(id) {
     const m = PRESET_BLOCK[id];
     if (!m) return;
@@ -393,7 +393,8 @@ const Gear = (() => {
         Break time is 30 × block strength ÷ speed, rounded to the nearest tick, with a 4-tick minimum. Hard Stone breaks instantly at 30 × its strength;
         ores, gemstones, Dwarven metals and pure blocks need more than 60 ×.</p>
       <div class="controls"><button type="button" class="btn" id="gTune">Tune this plan for ${U.esc(b.name)}</button></div>
-      <div id="gMsg"></div>`;
+      <div id="gMsg">${note ? `<p class="hint">${note}</p>` : ''}</div>`;
+    note = '';
   }
 
   /** Lowest speed-perk levels that keep the fastest break you can reach; fortune perks in the plan are maxed. */
@@ -436,6 +437,171 @@ const Gear = (() => {
     const changes = diff.map(([k, n]) => `${n > 0 ? 'saves' : 'costs'} ${U.num(Math.abs(n))} ${api.pname(k)}`).join(', ');
     const speeds = speedIds.map(id => `${U.esc(t.perks[id].name)} ${plan[id]}`).join(', ');
     return `Set for ${best === 1 ? 'instant' : best + '-tick'} ${U.esc(b.name)}${speeds ? ` (${speeds})` : ''}, with the fortune${b.kind === 'gem' ? ' and Pristine' : ''} perks in your plan maxed. ${changes ? 'This ' + changes + '.' : 'No change in powder.'}`;
+  }
+
+  /* ---------- "Best I can do": spend your tokens and powder where they add the most for a build ---------- */
+  // Each Pristine point is a 1% chance a drop comes out Flawed (worth 80 Rough) instead of Rough: +79% per point.
+  const PRISTINE_VALUE = 0.79;
+  let note = '';
+  const perkStat = (lv, id, k = 'stat') => {
+    const p = api.tree.perks[id], n = lv[id] || 0;
+    return n > 0 && p && p.stats && p.stats[k] ? +api.tree.run(p.stats[k], api.tree.env(n, api.state)) || 0 : 0;
+  };
+  /** Drops per second for block b (relative, for comparing plans). Powder grinding counts powder instead:
+      blocks × Mining Spread × chest chance (Great Explorer) × Powder Buff. `exact` rounds to whole ticks;
+      without it ticks are smooth, so the optimiser sees every bit of speed as progress toward the next tick. */
+  function output(lv, b, tot, mode, exact) {
+    const speed = tot.speed + perkSum(SPEED_PERKS, b, lv);
+    if (speed <= 0) return 0;
+    const tk = exact ? ticks(speed, b) : speed >= instantAt(b) ? 1 : Math.max(4, 30 * b.str / speed);
+    let out = 20 / tk;
+    if (hasSpread(b)) out *= 1 + (Object.values(tot.spreadParts).reduce((n, v) => n + v, 0) + perkSum(SPREAD_PERKS, b, lv)) / 100;
+    if (mode === 'powder') return out * (1 + perkStat(lv, 'great_explorer', 'statChance') / 100) * (1 + perkStat(lv, 'powder_buff') / 100);
+    out *= 1 + (tot.fortune + perkSum(FORTUNE_PERKS, b, lv)) / 100;
+    if (b.kind === 'gem') out *= 1 + PRISTINE_VALUE * (tot.pristine + perkStat(lv, 'mining_master'));
+    return out;
+  }
+
+  /** The plan that gets the most out of preset p with your HotM tier, tokens and powder. */
+  function best(p) {
+    const t = api.tree, s = api.state, perks = t.perks, P = Object.keys(t.data.powders);
+    const b = blockOf(), tot = gearTotals(b), mode = p.id === 'powder' ? 'powder' : '';
+    const ok = id => perks[id] && perks[id].tier <= s.tier;
+    const haveAny = P.some(k => s.have[k]);
+    const budget = Object.fromEntries(P.map(k => [k, haveAny ? s.have[k] || 0 : Infinity]));
+    // Powder to reach each level of each perk, from 0.
+    const cum = {};
+    for (const id of t.ids) {
+      let acc = {};
+      cum[id] = [acc];
+      for (let lv = 0; lv < perks[id].max; lv++) {
+        const c = t.step(id, lv, s);
+        acc = { ...acc };
+        if (c) acc[c[0]] = (acc[c[0]] || 0) + c[1];
+        cum[id].push(acc);
+      }
+    }
+    const spent = lv => {
+      const n = {};
+      for (const id of t.ids) { const c = cum[id][lv[id] || 0]; for (const k in c) n[k] = (n[k] || 0) + c[k]; }
+      return n;
+    };
+    const tokensLeft = lv => t.tokensAt(s.tier, t.coreId ? lv[t.coreId] : 0) - t.tokensUsed(lv);
+    const fits = lv => {
+      const n = spent(lv);
+      return P.every(k => (n[k] || 0) <= budget[k]) && tokensLeft(lv) >= 0 && t.ids.every(id => !(lv[id] > 0) || ok(id) || perks[id].core);
+    };
+    const raise = (lv, id, to) => { const n = { ...lv, [id]: to }; if (!(lv[id] > 0)) t.connect(n); return n; };
+
+    // The perks the output model sees for this block.
+    const on = map => Object.keys(map).filter(id => applies(map[id], b));
+    const speedIds = on(SPEED_PERKS).filter(ok);
+    const modelled = [...speedIds, ...(hasSpread(b) ? on(SPREAD_PERKS) : []),
+      ...(mode === 'powder' ? ['great_explorer', 'powder_buff'] : [...on(FORTUNE_PERKS), ...(b.kind === 'gem' ? ['mining_master'] : [])])].filter(ok);
+
+    /** Greedy: keep taking the step with the most extra output per share of what you have left. */
+    function climb(lv, ids) {
+      for (let guard = 0; guard < 4000; guard++) {
+        const cur = output(lv, b, tot, mode), used = spent(lv), left = tokensLeft(lv);
+        let pick = null, bestR = 0;
+        for (const id of ids) {
+          const max = perks[id].max, at = lv[id] || 0;
+          for (const step of new Set([1, 5, 20, max - at])) {
+            if (step < 1 || at + step > max) continue;
+            const n = raise(lv, id, at + step);
+            if (!fits(n)) continue;
+            const v = output(n, b, tot, mode);
+            const gain = cur > 0 ? v / cur - 1 : v > 0 ? 1e9 : 0;
+            if (gain <= 1e-12) continue;
+            const after = spent(n);
+            let c = P.reduce((x, k) => x + (budget[k] === Infinity ? 0 : ((after[k] || 0) - (used[k] || 0)) / Math.max(1, budget[k] - (used[k] || 0))), 0);
+            const dt = t.tokensUsed(n) - t.tokensUsed(lv);
+            if (dt) c += dt / Math.max(1, left);
+            const r = Math.log1p(gain) / Math.max(c, 1e-9);
+            if (r > bestR) { bestR = r; pick = n; }
+          }
+        }
+        if (!pick) return lv;
+        lv = pick;
+      }
+      return lv;
+    }
+    /** Drop speed levels that don't change the whole-tick break time (powder there is wasted). */
+    function trim(lv) {
+      const speedNow = l => tot.speed + perkSum(SPEED_PERKS, b, l);
+      const tk = ticks(speedNow(lv), b);
+      if (tk === Infinity) return lv;
+      const need = speedFor(tk, b);
+      for (;;) {
+        let pick = null, ratio = -1;
+        for (const id of speedIds) {
+          const at = lv[id] || 0;
+          if (at <= 1) continue;
+          const n = { ...lv, [id]: at - 1 };
+          if (speedNow(n) < need) continue;
+          const c = cum[id][at], c0 = cum[id][at - 1];
+          const r = P.reduce((x, k) => x + (c[k] || 0) - (c0[k] || 0), 0) / Math.max(1e-9, perkStat(lv, id) - perkStat(n, id));
+          if (r > ratio) { ratio = r; pick = n; }
+        }
+        if (!pick) return lv;
+        lv = pick;
+      }
+    }
+    /** Spend what's left on the build's other perks, in the preset's priority order. */
+    function fill(lv) {
+      for (const [id, v] of Object.entries(p.levels)) {
+        if (!ok(id) || perks[id].core || modelled.includes(id)) continue;
+        const want = v === 'max' ? perks[id].max : Math.min(v, perks[id].max);
+        while ((lv[id] || 0) < want) {
+          const n = raise(lv, id, (lv[id] || 0) + 1);
+          if (!fits(n)) break;
+          lv = n;
+        }
+      }
+      return lv;
+    }
+
+    const blank = () => Object.fromEntries(t.ids.map(id => [id, 0]));
+    const ability = [p.ability, p.fallback].find(a => a && ok(a));
+    const coreNow = t.coreId ? s.cur[t.coreId] || 0 : 0;
+    const coreTop = t.coreId && ok(t.coreId) ? perks[t.coreId].max : coreNow;
+    let top = null;
+    // Core levels only matter here for the tokens they give, so try your level and each token level above it.
+    const cores = [coreNow, ...Object.keys(t.data.coreTokens || {}).map(Number).filter(c => c > coreNow && c <= coreTop)];
+    for (const c of cores) {
+      let lv = blank();
+      if (t.coreId) lv[t.coreId] = c;
+      t.connect(lv);
+      if (!fits(lv)) continue;
+      if (ability) { const n = raise(lv, ability, 1); if (fits(n)) lv = n; }
+      lv = climb(lv, modelled);
+      lv = trim(lv);
+      lv = climb(lv, modelled.filter(id => !speedIds.includes(id)));
+      lv = fill(lv);
+      const v = output(lv, b, tot, mode, true);
+      // Ties go to the higher core (more tokens and stronger abilities for the same output).
+      if (!top || v >= top.v * 0.999) top = { lv, v };
+    }
+    if (!top) { note = 'Your powder doesn\'t cover your current Core of the Mountain level, so there is nothing to plan.'; return null; }
+
+    // Compare with the full build.
+    const full = blank();
+    if (t.coreId) full[t.coreId] = coreNow;
+    for (const [id, v] of Object.entries(p.levels)) if (perks[id]) full[id] = Math.max(full[id], v === 'max' ? perks[id].max : Math.min(v, perks[id].max));
+    t.connect(full);
+    const fullV = output(full, b, tot, mode, true);
+    const lv = top.lv;
+    const tk = ticks(tot.speed + perkSum(SPEED_PERKS, b, lv), b);
+    const abil = [p.ability, p.fallback].find(a => a && lv[a] > 0) || '';
+    const pct = fullV > 0 ? Math.min(100, Math.round(top.v / fullV * 100)) : 0;
+    const used = spent(lv);
+    const spare = haveAny ? P.filter(k => budget[k] - (used[k] || 0) > 0).map(k => `${U.num(budget[k] - (used[k] || 0))} ${api.pname(k)}`).join(', ') : '';
+    const into = mode === 'powder' ? 'Mining Spread, Great Explorer and Powder Buff' : b.kind === 'gem' ? 'fortune and Pristine' : hasSpread(b) ? 'fortune and Mining Spread' : 'fortune';
+    note = `<b>Best ${U.esc(p.name.toLowerCase())} build</b> for ${U.esc(b.name)} at HotM ${s.tier}${haveAny ? ' with the powder you own' : ''}:
+      ${tk === Infinity ? '' : tk === 1 ? 'instant breaks' : `${tk}-tick breaks`}${pct ? `, about ${pct}% of what the full build gives with your gear` : ''}.
+      ${haveAny ? (spare ? `Left over: ${spare}.` : 'It uses all your powder.') : 'Log in or type how much powder you own (under the tree) to fit it to your powder. For now only your tokens limit it.'}
+      Speed perks get the least that keeps this break time. The rest goes into ${into}, then the build's other perks in order.`;
+    return { levels: lv, ability: abil };
   }
 
   document.addEventListener('change', e => {
@@ -486,5 +652,5 @@ const Gear = (() => {
     $('#gMsg').innerHTML = `<p class="hint">${msg}</p>`;
   });
 
-  return { load, render, preset };
+  return { load, render, preset, best };
 })();

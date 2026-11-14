@@ -366,6 +366,7 @@ const Tree = (() => {
         <div class="ht-preset-foot">
           <button type="button" class="btn" data-preset="${p.id}">Plan this build</button>
           <button type="button" class="btn ghost" data-preset="${p.id}" data-tier="1">Only what my tier allows</button>
+          ${cfg.best ? `<button type="button" class="btn ghost" data-preset="${p.id}" data-best="1" title="Spends your tokens and powder where they add the most for this build">Best I can do</button>` : ''}
           ${p.src ? `<span class="hint">Based on <a href="${p.src}" target="_blank" rel="noopener">${U.esc(p.srcName || 'this guide')}</a></span>` : ''}
         </div></div>`).join('');
     }
@@ -440,7 +441,16 @@ const Tree = (() => {
     });
     $('#presets').addEventListener('click', e => {
       const b = e.target.closest('[data-preset]'); if (!b) return;
-      applyPreset(cfg.presets.find(p => p.id === b.dataset.preset), !!b.dataset.tier);
+      const p = cfg.presets.find(x => x.id === b.dataset.preset);
+      if (b.dataset.best && cfg.best) {
+        if (cfg.onPreset) cfg.onPreset(p);
+        const r = cfg.best(p, api);
+        if (r) { s.plan = r.levels; s.ability = r.ability; }
+        render();
+        ($(cfg.presetScroll || '#grid') || $('#grid')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      applyPreset(p, !!b.dataset.tier);
     });
     $('#tier').addEventListener('change', e => { s.tier = +e.target.value; render(); });
     $('#haveRow').addEventListener('change', e => {

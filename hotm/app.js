@@ -81,6 +81,7 @@ Tree.page({
   presets: PRESETS, powderOf,
   onRender: api => Gear.render(api),
   onPreset: p => Gear.preset(p.id),
+  best: p => Gear.best(p),   // "Best I can do": fits the build to your tier, tokens and powder
   presetScroll: '#gear',   // a preset changes the gear first, so show that
   onProfile: d => Gear.load(d),
 }).catch(err => { console.error(err); document.querySelector('#grid').innerHTML = '<p class="empty-note">Could not load the tree. Try refreshing.</p>'; });
