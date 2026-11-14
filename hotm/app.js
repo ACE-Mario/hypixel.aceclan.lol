@@ -68,10 +68,12 @@ const PRESETS = [
   },
 ];
 
-// Powder a reset would give you: unspent plus spent, minus what's in Core of the Mountain (never refunded).
-const powderOf = (m, core = {}) => {
+// Powder a reset would give you. The API's powder_<type> is everything you have (unspent + in perks + in the core),
+// and powder_spent_non_refundable_<type> is the part in Core of the Mountain, which a reset never gives back.
+// Checked on a real profile: 6,325,373 - 900,000 = 5,425,373 Gemstone, the same as the game after a reset.
+const powderOf = m => {
   const c = m.mining_core || {};
-  const get = k => (c['powder_' + k] || 0) + Math.max(0, (c['powder_spent_' + k] || 0) - (core[k.toUpperCase()] || 0));
+  const get = k => Math.max(0, (c['powder_' + k] || 0) - (c['powder_spent_non_refundable_' + k] || 0));
   return { MITHRIL: get('mithril'), GEMSTONE: get('gemstone'), GLACITE: get('glacite') };
 };
 
