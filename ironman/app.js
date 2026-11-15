@@ -396,14 +396,14 @@ function recipeGraph(p) {
     if (!inf || isRaw(p, id, inf)) { raws.add(id); return; }
     const r = inf.recipes[Math.min(p.choice[id] || 0, inf.recipes.length - 1)];
     const made = r.type !== 'set' && !!p.done[id];   // ticked as already made: its ingredients are used up
-    craft.set(id, { id, name: plainName(id), out: r.count, have: Math.floor(p.have[id] || 0), made, in: made ? [] : r.inputs.map(i => [i.id, i.count]) });
+    craft.set(id, { id, name: plainName(id), out: r.count, have: Math.floor(p.have[id] || 0), forge: forgeCounts[id] || 0, made, in: made ? [] : r.inputs.map(i => [i.id, i.count]) });
     if (!made) for (const i of r.inputs) visit(i.id);
   })(p.target);
   return { craft: [...craft.values()], raws: [...raws] };
 }
 function planPayload(p, res) {
   const g = recipeGraph(p);
-  const items = g.raws.map(id => ({ id, name: plainName(id), need: Math.ceil(res.raw.get(id) || 0), have: Math.floor(p.have[id] || 0) }));
+  const items = g.raws.map(id => ({ id, name: plainName(id), need: Math.ceil(res.raw.get(id) || 0), have: Math.floor(p.have[id] || 0), forge: forgeCounts[id] || 0 }));
   return { code: sync.code, name: plainName(p.target), target: p.target, qty: p.qty, items: items.slice(0, 400), craft: g.craft };
 }
 function sendPlan(force) {
@@ -1061,6 +1061,7 @@ function bindCustom() {
 /* ---------- from the logged-in profile ---------- */
 let profileCounts = null;
 let forging = 0;   // items in the Forge on the last profile read
+let forgeCounts = {};   // item ID -> how many are in the Forge (also counted in "have"); sent to the mod, which can't see the Forge
 /** Everything the profile is holding: sacks, inventory, ender chest, backpacks, vault, wardrobe, equipment, coins,
     and whatever is in the Forge right now (it's already paid for, so it counts as had). */
 async function profileItems(d) {
@@ -1068,6 +1069,7 @@ async function profileItems(d) {
   if (!inv || (!inv.sacks_counts && !inv.inv_contents)) return null;
   const counts = {};
   forging = 0;
+  forgeCounts = {};
   const add = (id, n) => { if (id && n > 0) counts[id] = (counts[id] || 0) + n; };
   for (const [id, n] of Object.entries(inv.sacks_counts || {})) add(id, n);
   const blobs = [inv.inv_contents, inv.ender_chest_contents, inv.personal_vault_contents, inv.wardrobe_contents, inv.inv_armor, inv.equipment_contents,
@@ -1084,6 +1086,7 @@ async function profileItems(d) {
       const it = await fetchItem(f.id);
       const r = (it.recipes || []).find(x => x.type === 'forge');
       add(f.id, r ? r.count : 1);
+      forgeCounts[f.id] = (forgeCounts[f.id] || 0) + (r ? r.count : 1);
       forging += 1;
     }
   }

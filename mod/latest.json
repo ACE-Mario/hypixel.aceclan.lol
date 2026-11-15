@@ -1,11 +1,11 @@
 {
-  "version": "1.17.0",
-  "file": "ace-clan-hypixel-1.17.0.jar",
-  "sha256": "7898f2bf63a2da7be2cb41ca4508e060fd0e983854477cee882263a032cf321f",
+  "version": "1.18.0",
+  "file": "ace-clan-hypixel-1.18.0.jar",
+  "sha256": "4a17c8b763769c0db988e6296ddb75c1742867de7aac71b778da317774c5d5f0",
   "notes": [
-    "Garden visitor helper: see what each visitor wants and whether your sacks and storage have it",
-    "/jerry trophy fills in every Trophy Fish tier from Hypixel's API",
-    "Case-opening reveal for Crystal Nucleus bundles and dungeon chests",
-    "Glow Jerry players and an Extras page in /jerry settings"
+    "/jerry shards: your shards from Hypixel's API (or your Hunting Box), search any shard and its quickest recipe",
+    "Add a shard recipe to /jerry plan to track it on your HUD",
+    "Press R on a shard in any menu to open its recipe",
+    "Search bar on the Pets menu, and items in your Forge now count on the plan HUD"
   ]
 }
