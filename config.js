@@ -5,5 +5,5 @@
 // https://github.com/ACE-Mario/hypixel.aceclan.lol/edit/main/config.js
 // This file is public, so anyone can see the key.
 window.ACE_CONFIG = {
-  hypixelApiKey: '9df10569-d313-4c9d-88ae-45b8665ebbd0',
+  hypixelApiKey: 'cb89ccd0-21fb-4492-bb3d-24038ff352eb',
 };
