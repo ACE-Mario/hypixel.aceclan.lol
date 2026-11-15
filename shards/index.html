@@ -9,6 +9,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../shared/site.css?v=20261114w">
+  <style>
+    .swaps { display: inline-flex; gap: 4px; margin-left: 6px; flex-wrap: wrap; }
+    .swaps .btn.on { border-color: var(--accent); }
+    .swap-list { display: grid; gap: 2px; margin: 4px 0 8px 28px; max-height: 280px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 4px; }
+    .swap-list button { display: flex; align-items: center; gap: 6px; background: none; border: 0; color: var(--text); text-align: left; padding: 4px 6px; border-radius: 6px; cursor: pointer; font: inherit; font-size: 13px; }
+    .swap-list button:hover { background: var(--card2); }
+    .swap-list button.on { background: var(--card2); outline: 1px solid var(--accent); }
+    .swap-list .muted { margin-left: auto; font-size: 12px; }
+    .ingame-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 0 0 14px; font-size: 13px; }
+    .ingame-bar .grow { flex: 1; min-width: 220px; }
+  </style>
 </head>
 <body>
   <div class="sitebar">
@@ -121,10 +132,12 @@
           </label>
           <div id="fuseSuggest" class="suggest" hidden></div>
         </div>
+        <div id="fuseGoal" class="controls" style="margin:0"></div>
         <label class="field">How many
           <input id="fuseQty" type="number" min="1" value="1" style="width:110px">
         </label>
       </div>
+      <div id="fuseSync" class="ingame-bar"></div>
       <div id="fuseOut"><p class="empty-note">Pick a shard to see the fastest way to get it.</p></div>
     </section>
   </main>
@@ -136,6 +149,6 @@
   </footer>
   <script src="../config.js"></script>
   <script src="../shared/sb.js?v=20261114w"></script>
-  <script src="app.js?v=20261114w"></script>
+  <script src="app.js?v=20261116a"></script>
 </body>
 </html>

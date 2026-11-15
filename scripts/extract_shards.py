@@ -6,9 +6,14 @@ Sources:
     data/SKYSHARDS-LICENSE.txt): effect text with level ranges, how to obtain each
     shard, base hunting rates (shards per hour) and every fusion recipe.
 
-Icons that are missing from icons/ are downloaded from sky.coflnet.com.
+Icons that are missing from icons/ are downloaded from sky.coflnet.com, or failing that from
+SkyShards' shardIcons (padded to a square and scaled to 64x64).
+
+Each shard also gets a 'short' how-to-get line ("Lasso · Traps: Murkwater Depths") for tight
+lists like the mod's shard menu.
 
 Run from the repo root:  python scripts/extract_shards.py
+Only redo the short lines on the existing data:  python scripts/extract_shards.py --short
 """
 import json
 import os
@@ -73,19 +78,98 @@ def neu_req(a):
     return None
 
 
-def fetch_icon(name, idx):
+def fetch_icon(name, idx, code=None):
     fn = name + '.png'
     if fn in idx:
         return None
     try:
         data = get(ICON + urllib.parse.quote(name))
-        if data[:4] != b'\x89PNG':
-            return None
-        with open(os.path.join(ROOT, 'icons', fn), 'wb') as f:
-            f.write(data)
+        if data[:4] == b'\x89PNG':
+            with open(os.path.join(ROOT, 'icons', fn), 'wb') as f:
+                f.write(data)
+            return fn
+    except Exception:  # noqa: BLE001
+        pass
+    if not code:
+        return None
+    try:  # SkyShards keeps an icon for every shard, named by code, at various sizes
+        import io
+        from PIL import Image
+        im = Image.open(io.BytesIO(get(SKY + 'public/shardIcons/' + code + '.png'))).convert('RGBA')
+        side = max(im.size)
+        sq = Image.new('RGBA', (side, side))
+        sq.paste(im, ((side - im.width) // 2, (side - im.height) // 2))
+        sq.resize((64, 64), Image.LANCZOS).save(os.path.join(ROOT, 'icons', fn))
         return fn
     except Exception:  # noqa: BLE001
         return None
+
+
+def short(hunt):
+    """The how-to-get lines boiled down to one short line: "Lasso · Traps: Murkwater Depths, Spring Depths"."""
+    parts, traps = [], []
+
+    def add(p):
+        if p and p not in parts:
+            parts.append(p)
+    rules = [
+        (r'Catch with (?:a |the )?(.+)$', lambda m: m.group(1).replace('Pocket ', '')),
+        (r'Catch an? .+? with a Critter Capsule in the (.+?) Biome', lambda m: 'Critter Capsule (' + m.group(1) + ')'),
+        (r'Floor Drop in (?:the )?(.+?)(?: Biome.*)?$', lambda m: 'Floor drop: ' + m.group(1)),
+        (r'Caught by Fishing in (.+)$', lambda m: 'Fishing: ' + m.group(1)),
+        (r'Lather Honeycomb on (.+)$', lambda m: 'Honeycomb on ' + m.group(1)),
+        (r'Purchased (?:in|from) (?:the )?(.+)$', lambda m: 'Buy: ' + m.group(1)),
+        (r'Charm .+$', lambda m: 'Charm'),
+        (r'(?:Obtained|Unlocked) from (?:the )?(.+)$', lambda m: m.group(1)),
+        (r'(?:Found|Hunted) in (?:the )?(.+)$', lambda m: m.group(1)),
+        (r'Dropped by (?:the )?(.+)$', lambda m: m.group(1)),
+    ]
+    for line in hunt:
+        t = ''.join(p[0] for p in line if isinstance(p, list)).strip(' -').rstrip('.').strip()
+        t = re.sub(r'\s+', ' ', t)
+        m = re.match(r'Place Hunting Traps in (.+?)(?:\. \(.*\))?$', t)
+        if m:
+            traps.append(m.group(1).rstrip('.'))
+            if 'Traps' not in parts:
+                parts.append('Traps')
+            continue
+        m = re.match(r'Fusing (.+)$', t)
+        if m:
+            f = m.group(1)
+            f = re.sub(r' Shards?\b', '', f)
+            f = re.sub(r' (Category|Family)\b', '', f)
+            f = f.replace(' or higher', '+')
+            f = re.sub(r',? and ', ' ', f).replace(' with ', ' + ')
+            add('Fuse: ' + f if len(f) <= 40 else 'Fuse')
+            continue
+        for rx, fn in rules:
+            m = re.match(rx, t)
+            if m:
+                add(fn(m))
+                break
+        else:
+            add(t)
+    out = []
+    for p in parts:
+        if p == 'Traps':
+            traps = list(dict.fromkeys(traps))
+            if len(traps) == 2 and traps[0].split()[0] == traps[1].split()[0] and ' ' in traps[1]:
+                traps = [traps[0] + '/' + traps[1].split(' ', 1)[1]]   # Murkwater Depths/Shallows
+            p = 'Traps: ' + ', '.join(traps) if len(traps) <= 2 else f'Traps ({len(traps)} places)'
+        elif any(p in t for t in traps):
+            continue   # "Lotus Atoll" again after "Traps: Lotus Atoll"
+        out.append(p)
+    return ' · '.join(out[:3]) + (' …' if len(out) > 3 else '')
+
+
+def short_only():
+    path = os.path.join(ROOT, 'data', 'shards.json')
+    d = json.load(open(path, encoding='utf-8'))
+    for s in d['shards']:
+        s['short'] = short(s['hunt'])
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(d, f, ensure_ascii=False, separators=(',', ':'))
+    print(f'data/shards.json: short lines for {len(d["shards"])} shards')
 
 
 def main():
@@ -115,6 +199,7 @@ def main():
             'ability': a.get('abilityName') or d.get('title', ''),
             'desc': segs(d.get('description', [])),
             'hunt': [segs(line) for line in d.get('how_to_hunt', [])],
+            'short': short([segs(line) for line in d.get('how_to_hunt', [])]),
             'rate': rates.get(code, 0),
             'noFortune': code in NO_FORTUNE,
             'fuse': s['fuse_amount'],
@@ -140,7 +225,7 @@ def main():
     idx_path = os.path.join(ROOT, 'icons', 'index.json')
     idx = set(json.load(open(idx_path, encoding='utf-8')))
     with ThreadPoolExecutor(16) as ex:
-        got = [x for x in ex.map(lambda s: fetch_icon(s['id'], idx), shards) if x]
+        got = [x for x in ex.map(lambda s: fetch_icon(s['id'], idx, s['code']), shards) if x]
     idx.update(got)
     with open(idx_path, 'w', encoding='utf-8') as f:
         json.dump(sorted(idx), f, separators=(',', ':'))
@@ -149,4 +234,7 @@ def main():
 
 if __name__ == '__main__':
     sys.stdout.reconfigure(encoding='utf-8')
-    main()
+    if '--short' in sys.argv:
+        short_only()
+    else:
+        main()

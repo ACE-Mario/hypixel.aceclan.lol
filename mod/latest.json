@@ -1,11 +1,11 @@
 {
-  "version": "1.18.0",
-  "file": "ace-clan-hypixel-1.18.0.jar",
-  "sha256": "4a17c8b763769c0db988e6296ddb75c1742867de7aac71b778da317774c5d5f0",
+  "version": "1.19.0",
+  "file": "ace-clan-hypixel-1.19.0.jar",
+  "sha256": "4c3aea288edb59fd3c981b144f54a8685bda2338f72ff46a172c7fa0bc94c427",
   "notes": [
-    "/jerry shards: your shards from Hypixel's API (or your Hunting Box), search any shard and its quickest recipe",
-    "Add a shard recipe to /jerry plan to track it on your HUD",
-    "Press R on a shard in any menu to open its recipe",
-    "Search bar on the Pets menu, and items in your Forge now count on the plan HUD"
+    "New /jerry shards menu: real shard icons, an icon bar for each type, and how many you need for max",
+    "Hover a shard's icon for its lore. Click it for how to get it, or its fusion tree",
+    "Swap any step in a fusion tree (break down, hunt instead, or another recipe), and pick a goal level or Max",
+    "Push a shard path to the site's Fusion planner and back. /ace works the same as /jerry"
   ]
 }

@@ -25,8 +25,10 @@ const WOODEN_BAIT = ['R29', 'L23', 'R59', 'R23', 'R49'];
 const KUUDRA = { t1: [60, 155000, 1], t2: [60, 310000, 1], t3: [60, 582000, 1], t4: [60, 1164000, 1.25], t5: [100, 2328000, 1.5] };
 
 let data = null, byCode = new Map(), fusion = null, best = null;
+// Swaps, shared by every plan (and with the mod): shard code -> 'h' (hunt it), 'x' (don't hunt, fuse it) or 'A,B' (use this recipe).
+let recOf = [], pairIdx = new Map(), swapOpen = null;
 let st = U.readLS(KEY, null) || {};
-st = Object.assign({ hf: 0, penalty: 1, cham: 1, noBait: 0, kuudra: '', kMoney: '', kTime: '', track: {}, tab: 'list', fuse: { code: null, qty: 1 }, f: {} }, st);
+st = Object.assign({ hf: 0, penalty: 1, cham: 1, noBait: 0, kuudra: '', kMoney: '', kTime: '', track: {}, tab: 'list', fuse: { code: null, qty: 1, goal: 0 }, f: {}, ovr: {} }, st);
 const save = () => U.writeLS(KEY, st);
 
 /* ---------- helpers ---------- */
@@ -99,6 +101,14 @@ function computeBest() {
   const how = new Int32Array(n).fill(-1); // index into recipe arrays, or -1 = hunt
   const m = mults();
   data.shards.forEach((s, i) => { const r = rateOf(s, m); direct[i] = r > 0 ? 1 / r : Infinity; cost[i] = direct[i]; });
+  // Your swaps: 1 = always hunt, 2 = never hunt, 3 = only this recipe (forced[i])
+  const kind = new Uint8Array(n), forced = new Int32Array(n).fill(-1);
+  for (const [code, v] of Object.entries(st.ovr)) {
+    const s = byCode.get(code); if (!s) continue;
+    if (v === 'h') kind[s.idx] = 1;
+    else if (v === 'x') { kind[s.idx] = 2; cost[s.idx] = Infinity; }
+    else { const k = pairIdx.get(s.idx + ':' + v); if (k != null) { kind[s.idx] = 3; forced[s.idx] = k; cost[s.idx] = Infinity; } }
+  }
   const { out, a, b, rep } = fusion;
   // Crocodile: reptile fusions make more on average
   const q = Float64Array.from(fusion.q, (x, k) => rep[k] ? x * m.croc : x);
@@ -107,12 +117,14 @@ function computeBest() {
   for (let pass = 0; pass < 60; pass++) {
     let changed = false;
     for (let k = 0; k < out.length; k++) {
+      const o = out[k];
+      if (kind[o] === 1 || (kind[o] === 3 && forced[o] !== k)) continue;
       const c = (cost[a[k]] * fuse[a[k]] + cost[b[k]] * fuse[b[k]] + pen) / q[k];
       if (c < cost[out[k]] - 1e-12) { cost[out[k]] = c; how[out[k]] = k; changed = true; }
     }
     if (!changed) break;
   }
-  best = { cost, direct, how, q };
+  best = { cost, direct, how, q, fuse, pen };
 }
 
 /** Expand a plan for `qty` of shard index `i` into a tree. */
@@ -169,7 +181,7 @@ function cardHTML(s) {
       <label>Level <select data-lvl="${s.code}">${opts(lvl, 0)}</select></label>
       <label>Goal <select data-target="${s.code}">${opts(target, 1)}</select></label>
       <span class="need">${need ? `<b>${need}</b> more · ${hrs(need * c)}` : '✓ done'}${box ? ` <span class="muted" title="Not fused yet">(${box} in your Hunting Box)</span>` : ''}</span>
-      ${need && !(r > 0 && best.how[i] < 0) && isFinite(c) ? `<button class="btn ghost small" data-plan="${s.code}" data-qty="${need}">Fusion plan</button>` : ''}
+      ${need && !(r > 0 && best.how[i] < 0) && isFinite(c) ? `<button class="btn ghost small" data-plan="${s.code}" data-qty="${need}" data-goal="${target}">Fusion plan</button>` : ''}
     </div>
   </article>`;
 }
@@ -213,20 +225,46 @@ function renderTotals() {
 function renderAll() { computeBest(); renderStatsSummary(); renderTotals(); if (st.tab === 'list') renderList(); else renderFuse(); }
 
 /* ---------- fusion planner ---------- */
+/** The buttons on a tree row: break down / hunt instead / swap recipe, and undo when you've changed it. */
+function swapButtons(s, hunt) {
+  const i = s.idx, v = st.ovr[s.code];
+  const b = [];
+  if (hunt && recOf[i].length) b.push(`<button class="btn ghost small" data-ovr="${s.code}" data-v="x" title="Don't hunt it: fuse it from other shards">Break down</button>`);
+  if (!hunt && isFinite(best.direct[i])) b.push(`<button class="btn ghost small" data-ovr="${s.code}" data-v="h" title="Hunt it yourself instead of fusing it">Hunt instead</button>`);
+  if (!hunt && recOf[i].length > 1) b.push(`<button class="btn ghost small ${swapOpen === s.code ? 'on' : ''}" data-ovr="${s.code}" data-v="swap" title="Pick a different pair of shards to fuse">⇄ Swap (${recOf[i].length})</button>`);
+  if (v) b.push(`<button class="btn ghost small" data-ovr="${s.code}" data-v="" title="Back to the fastest way">↺ Undo</button>`);
+  return `<span class="swaps">${b.join('')}</span>`;
+}
+/** Other recipes for a shard, fastest first. */
+function swapList(s) {
+  const { a, b } = fusion, { cost, q, fuse, pen } = best;
+  const cur = st.ovr[s.code];
+  const rows = recOf[s.idx].map(k => {
+    const A = data.shards[a[k]], B = data.shards[b[k]];
+    return { k, A, B, pair: A.code + ',' + B.code, c: (cost[a[k]] * fuse[a[k]] + cost[b[k]] * fuse[b[k]] + pen) / q[k] };
+  }).sort((x, y) => x.c - y.c).slice(0, 30);
+  return `<div class="swap-list">${rows.map(r => `<button type="button" data-ovr="${s.code}" data-v="${r.pair}" class="${cur === r.pair || (!cur && best.how[s.idx] === r.k) ? 'on' : ''}">
+    ${icon(r.A, 'small')} ${r.A.fuse} ${nameHTML(r.A)} + ${icon(r.B, 'small')} ${r.B.fuse} ${nameHTML(r.B)}
+    <span class="muted">${isFinite(r.c) ? hrs(r.c) + ' each' : 'no known source'}</span></button>`).join('')}</div>`;
+}
 function treeHTML(n) {
   const s = data.shards[n.i];
+  const swapped = st.ovr[s.code] ? ' <span class="chip custom" title="You changed this">swapped</span>' : '';
   if (n.hunt) {
     return `<li><div class="node-row">${icon(s, 'small')} <span class="qtyx">${U.num(n.qty)}×</span> ${nameHTML(s)}
-      ${isFinite(n.hours) ? `<span class="chip raw">hunt · ${hrs(n.hours)}</span>` : '<span class="chip req">no known source</span>'}</div></li>`;
+      ${isFinite(n.hours) ? `<span class="chip raw">hunt · ${hrs(n.hours)}</span>` : '<span class="chip req">no known source</span>'}${swapped}${swapButtons(s, true)}</div></li>`;
   }
   const extra = n.made - n.qty;
   return `<li><div class="node-row">${icon(s, 'small')} <span class="qtyx">${U.num(n.qty)}×</span> ${nameHTML(s)}
-    <span class="chip kat">fuse ×${U.num(n.crafts)}</span>${extra > 0 ? ` <span class="chip" title="Left over from rounding up fusions">+${U.num(extra)} spare</span>` : ''}</div>
+    <span class="chip kat">fuse ×${U.num(n.crafts)}</span>${extra > 0 ? ` <span class="chip" title="Left over from rounding up fusions">+${U.num(extra)} spare</span>` : ''}${swapped}${swapButtons(s, false)}</div>
+    ${swapOpen === s.code ? swapList(s) : ''}
     <ul>${n.kids.map(treeHTML).join('')}</ul></li>`;
 }
 function renderFuse() {
   const out = $('#fuseOut');
   const s = st.fuse.code && byCode.get(st.fuse.code);
+  renderGoal(s);
+  renderSync();
   $('#fuseQty').value = st.fuse.qty;
   if (!s) { out.innerHTML = '<p class="empty-note">Pick a shard to see the fastest way to get it.</p>'; return; }
   $('#fuseSearch').placeholder = s.name;
@@ -255,7 +293,10 @@ function renderFuse() {
       <div class="stat"><div class="k">Fusions</div><div class="v">${U.num(fusions)}</div></div>
       <div class="stat"><div class="k">Shard types to hunt</div><div class="v">${hunts.size}</div></div>
     </div>
-    ${tree.hunt ? `<p class="hint">Hunting ${U.esc(s.name)} yourself is faster than any fusion with your stats.</p>` : ''}
+    ${tree.hunt ? `<p class="hint">${st.ovr[s.code] === 'h' ? `You chose to hunt ${U.esc(s.name)} yourself.` : `Hunting ${U.esc(s.name)} yourself is faster than any fusion with your stats.`}
+      ${recOf[s.idx].length ? `<button class="btn ghost small" data-ovr="${s.code}" data-v="x">Break it down anyway</button>` : ''}</p>` : ''}
+    ${Object.keys(st.ovr).length ? `<p class="hint">You've changed ${Object.keys(st.ovr).length} shard${Object.keys(st.ovr).length > 1 ? 's' : ''} from the fastest way. Every plan uses your changes.
+      <button class="btn ghost small" data-ovr="*" data-v="">Reset all swaps</button></p>` : `<p class="hint">Use <b>Break down</b>, <b>Hunt instead</b> or <b>⇄ Swap</b> on any row to change the path.</p>`}
     <h3 class="section-h">Shards to hunt</h3>
     <table class="table">
       <thead><tr><th>Shard</th><th class="num">Amount</th><th class="num">Rate</th><th class="num">Time</th></tr></thead>
@@ -280,8 +321,89 @@ function showFuseSuggest() {
   box.innerHTML = fSugg.map((s, k) => `<button type="button" data-f="${k}" class="${k ? '' : 'active'}">${nameHTML(s)}<span class="id">${s.code}</span></button>`).join('');
   box.hidden = !fSugg.length;
 }
-function pickFuse(s, qty) {
-  st.fuse = { code: s.code, qty: qty || st.fuse.qty || 1 };
+/** Your level, the goal level and Max: the amount is what takes you from your level to the goal. */
+function renderGoal(s) {
+  const el = $('#fuseGoal');
+  if (!s) { el.innerHTML = ''; return; }
+  const lvl = lvlOf(s.code), box = owned[s.code] || 0;
+  const goal = st.fuse.goal || 0;
+  const opts = Array.from({ length: 10 - lvl }, (_, k) => k + lvl + 1)
+    .map(v => `<option value="${v}" ${v === goal ? 'selected' : ''}>Level ${v} · ${Math.max(0, shardsFor(s.rarity, lvl, v) - box)} shards</option>`).join('');
+  el.innerHTML = lvl >= 10 ? `<span class="hint">${U.esc(s.name)} is already level 10.</span>` : `
+    <label class="field">Goal <span class="hint">you're level ${lvl}${box ? `, ${box} in your box` : ''}</span>
+      <select id="goalSel"><option value="0" ${goal ? '' : 'selected'}>Custom amount</option>${opts}</select></label>
+    <button type="button" class="btn ghost small" id="goalMax" style="align-self:end" title="Enough to reach level 10">Max</button>`;
+}
+function setGoal(goal) {
+  const s = byCode.get(st.fuse.code); if (!s) return;
+  st.fuse.goal = goal;
+  if (goal) st.fuse.qty = Math.max(1, shardsFor(s.rarity, lvlOf(s.code), goal) - (owned[s.code] || 0));
+  save(); renderFuse();
+}
+
+/* ---------- send a path to the game and back, through Jerry, with the same link code as the Ironman planner ---------- */
+const JERRY = 'https://jerry.aceclan.lol';
+const SYNC_KEY = 'ace-hypixel.ironman.sync';
+let syncMsg = '';
+function syncCode() {
+  const sync = U.readLS(SYNC_KEY, null) || { on: false, code: '' };
+  if (!sync.code) {
+    const a = new Uint8Array(24);
+    crypto.getRandomValues(a);
+    sync.code = Array.from(a, b => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'[b % 56]).join('');
+    U.writeLS(SYNC_KEY, sync);
+  }
+  return sync.code;
+}
+function renderSync() {
+  const el = $('#fuseSync');
+  const s = st.fuse.code && byCode.get(st.fuse.code);
+  const code = (U.readLS(SYNC_KEY, null) || {}).code;
+  el.innerHTML = `<span class="grow">${syncMsg ? U.esc(syncMsg) : 'Send this path (amount and swaps) to the mod, or get the one you made in game.'}
+      ${code ? `<br><span class="hint">Linked with <code>/jerry plan link ${U.esc(code)}</code> (type it once in Minecraft)</span>` : ''}</span>
+    <button class="btn small" data-sync="push" ${s ? '' : 'disabled'}>Push to game</button>
+    <button class="btn small ghost" data-sync="pull">Get from game</button>`;
+}
+async function syncAct(act) {
+  const code = syncCode();
+  const body = act === 'push'
+    ? { code, from: 'site', path: { target: st.fuse.code, qty: Math.max(1, +st.fuse.qty || 1), goal: st.fuse.goal || 0, ovr: st.ovr } }
+    : { code, get: true };
+  syncMsg = act === 'push' ? 'Sending…' : 'Checking…';
+  renderSync();
+  try {
+    const r = await fetch(JERRY + '/mc/shardpath', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (act === 'push') {
+      if (!r.ok || !d.ok) throw new Error(d.error);
+      syncMsg = 'Sent. In game, open /jerry shards and press "From site".';
+    } else if (r.status === 404) {
+      syncMsg = 'Nothing pushed from the game yet. In /jerry shards, open a shard and press "Push to site".';
+    } else {
+      if (!d.ok) throw new Error(d.error);
+      const p = d.path, s = byCode.get(p.target);
+      if (!s) throw new Error('unknown shard');
+      st.ovr = p.ovr || {};
+      st.fuse = { code: p.target, qty: p.qty || 1, goal: p.goal || 0 };
+      if (st.fuse.goal) st.fuse.qty = Math.max(1, shardsFor(s.rarity, lvlOf(s.code), st.fuse.goal) - (owned[s.code] || 0));
+      save();
+      syncMsg = `Got ${s.name} from ${d.from === 'mc' ? 'the game' : 'this site'} (${d.age < 120 ? 'just now' : U.dur(d.age) + ' ago'}).`;
+      setTab('fuse');
+      return;
+    }
+  } catch (e) {
+    syncMsg = "Couldn't reach Jerry. Try again in a minute.";
+  }
+  renderSync();
+}
+
+function pickFuse(s, qty, goal) {
+  swapOpen = null;
+  st.fuse = { code: s.code, qty: qty || st.fuse.qty || 1, goal: goal || 0 };
+  if (!qty && !goal) {   // fresh pick: aim for the next level
+    const lvl = lvlOf(s.code);
+    if (lvl < 10) { st.fuse.goal = lvl + 1; st.fuse.qty = Math.max(1, shardsFor(s.rarity, lvl, lvl + 1) - (owned[s.code] || 0)); }
+  }
   $('#fuseSearch').value = ''; $('#fuseSuggest').hidden = true;
   save(); setTab('fuse');
 }
@@ -335,7 +457,7 @@ function bind() {
   });
   $('#shards').addEventListener('click', e => {
     const b = e.target.closest('[data-plan]');
-    if (b) { pickFuse(byCode.get(b.dataset.plan), +b.dataset.qty); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    if (b) { pickFuse(byCode.get(b.dataset.plan), +b.dataset.qty, +b.dataset.goal || 0); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   });
 
   $('#fuseSearch').addEventListener('input', showFuseSuggest);
@@ -345,7 +467,20 @@ function bind() {
   });
   $('#fuseSuggest').addEventListener('mousedown', e => { const b = e.target.closest('[data-f]'); if (b) { e.preventDefault(); pickFuse(fSugg[+b.dataset.f]); } });
   document.addEventListener('click', e => { if (!e.target.closest('#tab-fuse .search-box')) $('#fuseSuggest').hidden = true; });
-  $('#fuseQty').addEventListener('change', e => { st.fuse.qty = Math.max(1, parseInt(e.target.value, 10) || 1); save(); renderFuse(); });
+  $('#fuseQty').addEventListener('change', e => { st.fuse.qty = Math.max(1, parseInt(e.target.value, 10) || 1); st.fuse.goal = 0; save(); renderFuse(); });
+  $('#fuseGoal').addEventListener('change', e => { if (e.target.id === 'goalSel') setGoal(+e.target.value); });
+  $('#fuseGoal').addEventListener('click', e => { if (e.target.id === 'goalMax') setGoal(10); });
+  $('#fuseSync').addEventListener('click', e => { const b = e.target.closest('[data-sync]'); if (b && !b.disabled) syncAct(b.dataset.sync); });
+  $('#fuseOut').addEventListener('click', e => {
+    const b = e.target.closest('[data-ovr]'); if (!b) return;
+    const code = b.dataset.ovr, v = b.dataset.v;
+    if (v === 'swap') { swapOpen = swapOpen === code ? null : code; renderFuse(); return; }
+    if (code === '*') st.ovr = {};
+    else if (!v) delete st.ovr[code];
+    else st.ovr[code] = v;
+    if (v && v.includes(',')) swapOpen = null;
+    save(); renderAll();
+  });
 }
 function setLevel(code, v) {
   const r = st.track[code] || (st.track[code] = { lvl: 0, target: 10 });
@@ -415,11 +550,14 @@ function applyProfile(d, fresh) {
           const [x, y] = pair.split(',');
           const xi = byCode.get(x), yi = byCode.get(y);
           if (!xi || !yi) continue;
+          pairIdx.set(oi.idx + ':' + x + ',' + y, out.length);
           out.push(oi.idx); a.push(xi.idx); b.push(yi.idx); q.push(+qty); rep.push(reptile(xi) || reptile(yi) ? 1 : 0);
         }
       }
     }
     fusion = { out: Int32Array.from(out), a: Int32Array.from(a), b: Int32Array.from(b), q: Float64Array.from(q), rep: Uint8Array.from(rep) };
+    recOf = data.shards.map(() => []);
+    out.forEach((o, k) => recOf[o].push(k));
     bind();
     setTab(st.tab === 'fuse' ? 'fuse' : 'list');
     U.profileBar($('#profileBar'), { what: 'your shard levels', apply: applyProfile });
