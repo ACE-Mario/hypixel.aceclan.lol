@@ -248,12 +248,19 @@ function compute(p) {
     const r = inf.recipes[ri];
     const crafts = Math.ceil(need / r.count - 1e-9);
     Object.assign(n, { recipe: r, ri, crafts, extra: crafts * r.count - need, options: inf.recipes });
-    coinTotal += r.coins * crafts;
-    if (r.type === 'forge') forge += r.duration * crafts;
-    if (r.type === 'kat') kat += r.duration * crafts;
+    // Spares from rounding up go back in the pool, so the next place that needs this item uses them first.
+    if (n.extra > 0) pool[id] = (pool[id] || 0) + n.extra;
+    // A ticked step is already made: its ingredients were used up, so don't ask for them again.
+    const made = r.type !== 'set' && !!p.done[id];
+    n.made = made;
+    if (!made) {
+      coinTotal += r.coins * crafts;
+      if (r.type === 'forge') forge += r.duration * crafts;
+      if (r.type === 'kat') kat += r.duration * crafts;
+    }
     const next = path.concat(id);
-    for (const inp of r.inputs) n.children.push(walk(inp.id, inp.count * crafts, next));
-    if (r.coins) {
+    if (!made) for (const inp of r.inputs) n.children.push(walk(inp.id, inp.count * crafts, next));
+    if (r.coins && !made) {
       // Coins show up as their own ingredient, so they appear in the tree and the raw materials list.
       const q = r.coins * crafts;
       n.children.push({ id: COIN, qty: q, key: n.key + '>' + COIN, depth: n.depth + 1, children: [], raw: true, coin: true });
@@ -379,9 +386,25 @@ function newCode() {
   crypto.getRandomValues(a);
   return Array.from(a, b => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'[b % 56]).join('');
 }
+/* Every step of the plan with the recipe picked for it, whatever you already have. The mod redoes the maths
+   in game with what you're carrying, so crafting a part (a Gemstone Mixture, say) takes its ingredients off the list. */
+function recipeGraph(p) {
+  const craft = new Map(), raws = new Set();
+  (function visit(id) {
+    if (id === COIN || craft.has(id) || raws.has(id) || craft.size >= 400) return;
+    const inf = info.get(id);
+    if (!inf || isRaw(p, id, inf)) { raws.add(id); return; }
+    const r = inf.recipes[Math.min(p.choice[id] || 0, inf.recipes.length - 1)];
+    const made = r.type !== 'set' && !!p.done[id];   // ticked as already made: its ingredients are used up
+    craft.set(id, { id, name: plainName(id), out: r.count, have: Math.floor(p.have[id] || 0), made, in: made ? [] : r.inputs.map(i => [i.id, i.count]) });
+    if (!made) for (const i of r.inputs) visit(i.id);
+  })(p.target);
+  return { craft: [...craft.values()], raws: [...raws] };
+}
 function planPayload(p, res) {
-  const items = [...res.raw].filter(([id]) => id !== COIN).map(([id, q]) => ({ id, name: plainName(id), need: Math.ceil(q), have: Math.floor(p.have[id] || 0) }));
-  return { code: sync.code, name: plainName(p.target), target: p.target, items: items.slice(0, 400) };
+  const g = recipeGraph(p);
+  const items = g.raws.map(id => ({ id, name: plainName(id), need: Math.ceil(res.raw.get(id) || 0), have: Math.floor(p.have[id] || 0) }));
+  return { code: sync.code, name: plainName(p.target), target: p.target, qty: p.qty, items: items.slice(0, 400), craft: g.craft };
 }
 function sendPlan(force) {
   const p = plan();
@@ -542,6 +565,7 @@ function nodeHTML(p, n) {
   const inf = info.get(n.id);
   if (inf) for (const r of inf.req) chips.push(`<span class="chip req">🔒 ${esc(r)}</span>`);
   if (n.used) chips.push(`<span class="covered">✓ ${num(n.used)} from inventory</span>`);
+  if (n.made) chips.push('<span class="covered" title="You ticked this step, so its ingredients aren\'t counted">✓ made</span>');
   if (n.raw && (p.have[n.id] || 0) >= (last && last.raw.get(n.id) || Infinity)) chips.push('<span class="covered">✓ gathered</span>');
 
   const ctrl = [];
@@ -683,7 +707,7 @@ function renderReq(p, res) {
 
 function renderSteps(p, res) {
   $('#tab-steps').innerHTML = res.steps.length ? `
-    <div class="toolbar"><span>Crafts in order, with ingredients first. Tick them off as you go.</span></div>
+    <div class="toolbar"><span>Crafts in order, with ingredients first. Tick them off as you go: a ticked craft counts as made, so its ingredients come off the materials list.</span></div>
     <div class="cards">${res.steps.map((s, i) => {
       const r = s.recipe;
       const ins = r.inputs.map(x => `${num(x.count * s.crafts)} ${nameHTML(x.id)}`);
@@ -834,7 +858,7 @@ function bind() {
       p.choice[el.dataset.choice] = +el.value; saveState(); refresh();
     } else if (el.dataset.done !== undefined) {
       if (el.checked) p.done[el.dataset.done] = true; else delete p.done[el.dataset.done];
-      saveState(); render(last);
+      saveState(); refresh(); // a ticked step counts as made, so the materials change
     } else if (el.id === 'hideDone') {
       state.hideDone = el.checked; saveState(); render(last);
     }
