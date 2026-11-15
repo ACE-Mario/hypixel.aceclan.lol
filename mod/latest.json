@@ -1,11 +1,11 @@
 {
-  "version": "1.15.1",
-  "file": "ace-clan-hypixel-1.15.1.jar",
-  "sha256": "63cad9b25db1effef9fccbedda850bb99b8b4709ce0c3441a218e7a7108b8a1b",
+  "version": "1.16.0",
+  "file": "ace-clan-hypixel-1.16.0.jar",
+  "sha256": "642fc270f57b003c9fc106b5207120092183d603d62cdc266dd72f0706b555d4",
   "notes": [
-    "Craft plan on your HUD: materials still needed from the Ironman planner (/jerry plan)",
-    "Parts you already have (like Gemstone Mixtures) take their ingredients off the list",
-    "Steps you can make now show on the HUD, e.g. Gemstone Mixture 12/40 left",
-    "Recipe tree in /jerry plan: see every step, what's done and what's ready"
+    "/jerry trophy: Trophy Fish and Trophy Frogs you're missing, and how to catch each one",
+    "Case-opening reveal for Crystal Nucleus bundles and dungeon chests",
+    "Glow Jerry players: clanmates using the mod get a purple outline (off by default)",
+    "New Extras page in /jerry settings for all of these"
   ]
 }
