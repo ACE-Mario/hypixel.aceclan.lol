@@ -1,11 +1,11 @@
 {
-  "version": "1.14.1",
-  "file": "ace-clan-hypixel-1.14.1.jar",
-  "sha256": "7517f4e43fb7cd461c2fe11b95b7088e8b5a3c475fe581ce48bebcc152e2850e",
+  "version": "1.15.1",
+  "file": "ace-clan-hypixel-1.15.1.jar",
+  "sha256": "63cad9b25db1effef9fccbedda850bb99b8b4709ce0c3441a218e7a7108b8a1b",
   "notes": [
-    "Put all into sacks: the new → Sacks button in the storage viewer",
-    "Update notices also show on the server list, in chat, and with /jerry update",
-    "The mod tells you when there's an update and can install it for you",
-    "Nucleus Runs tracker for Crystal Nucleus runs (/jerry nucleus)"
+    "Craft plan on your HUD: materials still needed from the Ironman planner (/jerry plan)",
+    "Parts you already have (like Gemstone Mixtures) take their ingredients off the list",
+    "Steps you can make now show on the HUD, e.g. Gemstone Mixture 12/40 left",
+    "Recipe tree in /jerry plan: see every step, what's done and what's ready"
   ]
 }
