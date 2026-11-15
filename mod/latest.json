@@ -1,11 +1,11 @@
 {
-  "version": "1.16.0",
-  "file": "ace-clan-hypixel-1.16.0.jar",
-  "sha256": "642fc270f57b003c9fc106b5207120092183d603d62cdc266dd72f0706b555d4",
+  "version": "1.16.1",
+  "file": "ace-clan-hypixel-1.16.1.jar",
+  "sha256": "9b6394bbc0a96928581e29083f1167c13a2d7369689a745c4acc9eb589b9e291",
   "notes": [
+    "/jerry trophy now fills in every Trophy Fish tier you've caught from Hypixel's API",
     "/jerry trophy: Trophy Fish and Trophy Frogs you're missing, and how to catch each one",
     "Case-opening reveal for Crystal Nucleus bundles and dungeon chests",
-    "Glow Jerry players: clanmates using the mod get a purple outline (off by default)",
-    "New Extras page in /jerry settings for all of these"
+    "Glow Jerry players and a new Extras page in /jerry settings"
   ]
 }
