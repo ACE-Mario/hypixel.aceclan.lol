@@ -1,11 +1,11 @@
 {
-  "version": "1.16.1",
-  "file": "ace-clan-hypixel-1.16.1.jar",
-  "sha256": "9b6394bbc0a96928581e29083f1167c13a2d7369689a745c4acc9eb589b9e291",
+  "version": "1.17.0",
+  "file": "ace-clan-hypixel-1.17.0.jar",
+  "sha256": "7898f2bf63a2da7be2cb41ca4508e060fd0e983854477cee882263a032cf321f",
   "notes": [
-    "/jerry trophy now fills in every Trophy Fish tier you've caught from Hypixel's API",
-    "/jerry trophy: Trophy Fish and Trophy Frogs you're missing, and how to catch each one",
+    "Garden visitor helper: see what each visitor wants and whether your sacks and storage have it",
+    "/jerry trophy fills in every Trophy Fish tier from Hypixel's API",
     "Case-opening reveal for Crystal Nucleus bundles and dungeon chests",
-    "Glow Jerry players and a new Extras page in /jerry settings"
+    "Glow Jerry players and an Extras page in /jerry settings"
   ]
 }
