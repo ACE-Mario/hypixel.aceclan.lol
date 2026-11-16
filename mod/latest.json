@@ -1,10 +1,15 @@
 {
-  "version": "1.22.1",
-  "file": "ace-clan-hypixel-1.22.1.jar",
-  "sha256": "1ffe8e51e55c1c1c93c01a1dfaf3fbd2dd6a6c19efe4c019a314e5b7304a21ee",
+  "version": "1.23.1",
+  "file": "ace-clan-hypixel-1.23.1.jar",
+  "sha256": "c35caa9e4fbe8b39526ed2094fcd34c6792af045d97fd04c68643518e276df59",
   "notes": [
-    "Quick call uses the exact name /call takes for each contact (Maddox the Slayer is /call maddox, Feast Baker Scott is /call Scott, Spider Tamer is /call SpiderTamer, Crag is /call kuudra...)",
-    "Hover a contact to see the exact /call it will run",
-    "Quick call menu: /ace call (or set a Quick call key in Controls) shows your Abiphone contacts as heads. Click to call, right-click or F to star"
+    "HUD layouts: Default, Dungeons, Mining, Farming and Fishing can each have their own HUD layout, picked at the top of /jerry hud",
+    "The mod switches layout by where you are (a fishing rod in your hand counts as fishing). Turn Auto-switch off in /jerry hud",
+    "Tracker counts on your HUD: in /jerry gui, pick a tracker and press Show on HUD. Move it with /jerry hud",
+    "Show your counts, everyone's added together, or each player's (the Mine / Everyone / Players button in /jerry gui)",
+    "Players view: a card per player with their skin's face, the tracker and what they've collected",
+    "Pick players: a face for everyone who linked the mod, click to add or remove their card, or type any name (/jerry hud players, /jerry hud add <name>)",
+    "What's changed: the update box lists every change since your version, and after updating a chat message links to them",
+    "/jerry changelog shows every version's changes, and the mod page has a full changelog"
   ]
 }

@@ -36,6 +36,18 @@
     details { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 8px; }
     summary { cursor: pointer; font-weight: 600; }
     details p { margin: 8px 0 0; color: var(--muted); }
+    .whatsnew { margin: 8px 0 0; }
+    .whatsnew a { color: var(--accent); }
+    .cl-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; color: var(--muted); }
+    .cl-pick select { background: var(--card2); color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; }
+    .cl-sum { color: var(--text, inherit); font-weight: 600; }
+    .cl details { padding: 10px 14px; }
+    .cl summary { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+    .cl summary small { color: var(--muted); font-weight: 400; }
+    .cl ul { margin: 8px 0 0; padding-left: 20px; color: var(--muted); }
+    .cl li { margin: 3px 0; }
+    .cl .new { border-color: var(--accent); }
+    .cl .tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: #160d2e; font-weight: 700; }
   </style>
 </head>
 <body>
@@ -55,12 +67,13 @@
           <span class="pill">Minecraft 26.2</span>
           <span class="pill">Fabric</span>
           <span class="pill">Client-side only</span>
-          <span class="pill">Version 1.22.1</span>
+          <span class="pill">Version 1.23.1</span>
         </div>
       </div>
       <div class="dl">
-        <a class="btn" href="ace-clan-hypixel-1.22.1.jar" download>⬇ Download the mod</a>
-        <small>ace-clan-hypixel-1.22.1.jar · 304 KB</small>
+        <a class="btn" href="ace-clan-hypixel-1.23.1.jar" download>⬇ Download the mod</a>
+        <a class="whatsnew" href="#changelog">What's new? See the changelog ↓</a>
+        <small>ace-clan-hypixel-1.23.1.jar · 340 KB</small>
       </div>
     </div>
     <p class="hint">The mod reads chat and menus and draws on your screen. The only commands it ever sends are when you click an item in the storage viewer: <code>/gfs</code>, or the command that opens that ender chest page or backpack.</p>
@@ -91,6 +104,7 @@
       <div class="card"><h3>🔥 Kuudra Chests</h3><p>What you claim from Paid and Free chests.</p></div>
       <div class="card"><h3>🐛 Garden Pests</h3><p>Pests killed and the crops they drop.</p></div>
       <div class="card"><h3>🔮 Nucleus Runs</h3><p>Crystal Nucleus runs finished and what each loot bundle gave.</p></div>
+      <div class="card"><h3>📊 Counts on your HUD</h3><p>In <code>/jerry gui</code>, pick a tracker and press <b>Show on HUD</b>. While it runs, your counts show on screen: yours, everyone's together, or a card per player with their skin's face. <b>Pick players…</b> chooses whose cards show.</p></div>
     </div>
     <p class="hint">Drops are counted per player and per SkyBlock profile. Jerry keeps a live message in Discord and all-time totals.</p>
 
@@ -145,6 +159,7 @@
       <div class="card"><h3>🐾 Pets search</h3><p>A search box on Hypixel's Pets menu dims every pet that doesn't match and tells you which page the others are on.</p></div>
       <div class="card"><h3>📞 Quick call</h3><p><code>/ace call</code> or your Quick call key shows your Abiphone contacts as heads. Click one to call them, star your usual ones so they sit at the top. Open your Abiphone once so the mod learns who's in it.</p></div>
       <div class="card"><h3>🖼️ HUD editor</h3><p><code>/jerry hud</code> puts every HUD on one screen: Ace's, other mods' (Skyblocker, SkyHanni, Odin…) and Minecraft's own scoreboard, boss bar and effects. Drag to move, drag a corner to resize like a picture in Word, and <b>Ctrl+Z</b> to undo.</p></div>
+      <div class="card"><h3>🗺️ HUD layouts</h3><p>Dungeons, Mining, Farming and Fishing can each have their own HUD layout. The mod switches by where you are, and a fishing rod in your hand counts as fishing.</p></div>
       <div class="card"><h3>🧩 Other mods' settings</h3><p>Right-click another mod's HUD part to open that mod's settings, or use the list down the side. Shift+right-click puts any part back. Needs Mod Menu.</p></div>
       <div class="card"><h3>⚙️ Extras page</h3><p>Find all of these under <b>Extras</b> in <code>/jerry settings</code>, with a button to test the reveal.</p></div>
     </div>
@@ -158,8 +173,10 @@
         <tr><td><code>/jerry map</code></td><td>In Minecraft. Link to the <a href="../map/">live clan map</a>. Turn on <b>Share my location</b> in <code>/jerry settings</code> to show up on it.</td></tr>
         <tr><td><code>/jerry plan</code></td><td>In Minecraft. Your craft plan from the Ironman planner: materials, recipe tree, and HUD settings. <code>/jerry plan link &lt;code&gt;</code> connects it, <code>/jerry plan unlink</code> stops it.</td></tr>
         <tr><td><code>/jerry shards</code></td><td>In Minecraft. Your attribute shards: how many you need for max, how to get each one, fusion trees you can change, and add one to your craft plan.</td></tr>
+        <tr><td><code>/jerry changelog</code></td><td>In Minecraft. Every version's changes. <code>/jerry changelog 1.21.0</code> shows only what changed since that version.</td></tr>
         <tr><td><code>/jerry call</code></td><td>In Minecraft. Quick call: your Abiphone contacts as heads. Click one to call them. You can also set a key for it in Controls.</td></tr>
         <tr><td><code>/jerry hud</code></td><td>In Minecraft. Move and resize every HUD part on one screen: Ace's, other mods' and Minecraft's own. Right-click one to open that mod's settings.</td></tr>
+        <tr><td><code>/jerry hud players</code></td><td>In Minecraft. Pick whose cards show on the tracker HUD: click the face of anyone who linked the mod. <code>/jerry hud add &lt;name&gt;</code> and <code>/jerry hud remove &lt;name&gt;</code> work too.</td></tr>
         <tr><td><code>/jerry trophy</code></td><td>In Minecraft. Trophy Fish and Trophy Frogs: which tiers you have, what's missing, and how to catch each one.</td></tr>
         <tr><td><code>/jerry update</code></td><td>In Minecraft. Check the site for a new version right now and install it. The mod also checks once when you open the Multiplayer server list.</td></tr>
         <tr><td><code>/jerry nucleus</code></td><td>In Minecraft. Your Crystal Nucleus runs: this session and the total on each profile. Each run also shows its number in chat.</td></tr>
@@ -172,6 +189,47 @@
         <tr><td><code>!jerry status</code></td><td>In Discord. See which trackers are running.</td></tr>
       </table>
     </div>
+
+    <h3 class="section-h" id="changelog">Changelog</h3>
+    <div class="cl-pick">
+      <label for="clHave">I have version</label>
+      <select id="clHave"><option value="">(show every version)</option></select>
+      <span id="clSum" class="cl-sum"></span>
+    </div>
+    <div id="cl" class="cl"><p class="hint">Loading the changelog…</p></div>
+    <script>
+    (function () {
+      var box = document.getElementById('cl'), pick = document.getElementById('clHave'), sum = document.getElementById('clSum');
+      var versions = [];
+      function key(v) { return v.split('.').map(function (n) { return parseInt(n, 10) || 0; }); }
+      function newer(a, b) { var x = key(a), y = key(b); for (var i = 0; i < Math.max(x.length, y.length); i++) { var p = x[i] || 0, q = y[i] || 0; if (p !== q) return p > q; } return false; }
+      function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+      function draw() {
+        var have = pick.value;
+        try { if (have) localStorage.setItem('ace-hypixel.mod.have', have); } catch (e) {}
+        var shown = have ? versions.filter(function (v) { return newer(v.version, have); }) : versions;
+        var count = shown.reduce(function (n, v) { return n + v.notes.length; }, 0);
+        sum.textContent = !have ? '' : shown.length === 0 ? "You're up to date." : shown.length + ' update' + (shown.length === 1 ? '' : 's') + ' since ' + have + ', ' + count + ' change' + (count === 1 ? '' : 's');
+        if (have && shown.length === 0) { box.innerHTML = '<p class="hint">Nothing new since ' + esc(have) + '.</p>'; return; }
+        box.innerHTML = shown.map(function (v, i) {
+          var open = have || i === 0 ? ' open' : '';
+          var tag = i === 0 && versions[0] === v ? ' <span class="tag">Latest</span>' : '';
+          return '<details class="' + (have ? 'new' : '') + '"' + open + '><summary>' + esc(v.version) + tag + ' <small>' + esc(v.date || '') + '</small></summary><ul>'
+            + v.notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul></details>';
+        }).join('');
+      }
+      fetch('changelog.json?t=' + Date.now()).then(function (r) { return r.json(); }).then(function (d) {
+        versions = d.versions || [];
+        versions.forEach(function (v) { var o = document.createElement('option'); o.value = v.version; o.textContent = v.version; pick.appendChild(o); });
+        var q = new URLSearchParams(location.search).get('from'), saved = null;
+        try { saved = localStorage.getItem('ace-hypixel.mod.have'); } catch (e) {}
+        var want = q || saved;
+        if (want && versions.some(function (v) { return v.version === want; })) pick.value = want;
+        draw();
+      }).catch(function () { box.innerHTML = '<p class="hint">Couldn\'t load the changelog.</p>'; });
+      pick.addEventListener('change', draw);
+    })();
+    </script>
 
     <h3 class="section-h">Problems?</h3>
     <details><summary>How do I update?</summary>

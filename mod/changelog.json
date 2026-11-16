@@ -1,0 +1,161 @@
+{
+  "versions": [
+    {
+      "version": "1.23.1",
+      "date": "2026-11-16",
+      "notes": [
+        "HUD layouts: Default, Dungeons, Mining, Farming and Fishing can each have their own HUD layout, picked at the top of /jerry hud",
+        "The mod switches layout by where you are (a fishing rod in your hand counts as fishing). Turn Auto-switch off in /jerry hud",
+        "Tracker counts on your HUD: in /jerry gui, pick a tracker and press Show on HUD. Move it with /jerry hud",
+        "Show your counts, everyone's added together, or each player's (the Mine / Everyone / Players button in /jerry gui)",
+        "Players view: a card per player with their skin's face, the tracker and what they've collected",
+        "Pick players: a face for everyone who linked the mod, click to add or remove their card, or type any name (/jerry hud players, /jerry hud add <name>)",
+        "What's changed: the update box lists every change since your version, and after updating a chat message links to them",
+        "/jerry changelog shows every version's changes, and the mod page has a full changelog"
+      ]
+    },
+    {
+      "version": "1.22.1",
+      "date": "2026-11-16",
+      "notes": [
+        "Quick call uses the exact name /call takes for each contact (Maddox the Slayer is /call maddox, Feast Baker Scott is /call Scott, Spider Tamer is /call SpiderTamer, Crag is /call kuudra...)",
+        "Hover a contact to see the exact /call it will run",
+        "Quick call menu: /ace call (or set a Quick call key in Controls) shows your Abiphone contacts as heads. Click to call, right-click or F to star"
+      ]
+    },
+    {
+      "version": "1.22.0",
+      "date": "2026-11-16",
+      "notes": [
+        "New Quick call menu: /ace call (or set a Quick call key in Controls) shows your Abiphone contacts as heads, like the storage viewer",
+        "Click a contact to call them (Hypixel's /call). Search by name or where they are, sort A-Z or by recent",
+        "Right-click or F stars a contact so it pins to the top; middle-click removes one",
+        "Open your Abiphone once (each page) and the mod remembers your contacts"
+      ]
+    },
+    {
+      "version": "1.21.1",
+      "date": "2026-11-16",
+      "notes": [
+        "HUD editor: Ctrl+Z undoes your last change (move, resize, put back, Reset all) and Ctrl+Y redoes it",
+        "Drag a corner of any HUD part to resize it, like a picture in Word: the opposite corner stays put and it keeps its shape",
+        "Scrolling over a part still resizes it in 10% steps",
+        "/jerry hud shows other mods' HUD parts too (Skyblocker, SkyHanni, Odin and more) plus Minecraft's own; right-click one for that mod's settings"
+      ]
+    },
+    {
+      "version": "1.21.0",
+      "date": "2026-11-16",
+      "notes": [
+        "/jerry hud now shows other mods' HUD parts too (Skyblocker, SkyHanni, Odin and more), plus Minecraft's own: scoreboard, boss bar, potion effects, hotbar",
+        "Drag any of them to move it and scroll to resize. Purple boxes are Ace, blue boxes are other mods",
+        "Right-click another mod's part to open that mod's settings; shift+right-click puts any part back",
+        "A list down the side opens each HUD mod's settings, so their own HUD editors are all one click away",
+        "Reset all puts every part back, Ace's and other mods'"
+      ]
+    },
+    {
+      "version": "1.20.0",
+      "date": "2026-11-16",
+      "notes": [
+        "Keep several plans: craft plans and shard plans are all saved, and the ◀ ▶ buttons in /jerry plan switch between them",
+        "Save a copy of your website plan, or delete a saved one, from /jerry plan",
+        "New HUD editor (/jerry hud, or Edit HUD in /jerry settings): drag every Ace HUD part, scroll to resize, right-click to reset",
+        "The loot reveal strip can now be moved and resized too",
+        "Fusion Machine helper: a panel beside the Fusion Machine shows your plan's next fusion and what you still need",
+        "The shards that go into that fusion get a gold outline. Turn it off under Extras"
+      ]
+    },
+    {
+      "version": "1.19.1",
+      "date": "2026-11-16",
+      "notes": [
+        "/jerry update now checks the site again every time you type it",
+        "The automatic update check runs once, when you open the Multiplayer server list",
+        "New /jerry shards menu: real shard icons, an icon bar for each type, and how many you need for max",
+        "Hover a shard's icon for its lore. Click it for how to get it, or its fusion tree",
+        "Swap any step in a fusion tree (break down, hunt instead, or another recipe), and pick a goal level or Max",
+        "Push a shard path to the site's Fusion planner and back. /ace works the same as /jerry"
+      ]
+    },
+    {
+      "version": "1.19.0",
+      "date": "2026-11-16",
+      "notes": [
+        "New /jerry shards menu: real shard icons, an icon bar for each type, and how many you need for max",
+        "Hover a shard's icon for its lore. Click it for how to get it, or its fusion tree",
+        "Swap any step in a fusion tree (break down, hunt instead, or another recipe), and pick a goal level or Max",
+        "Push a shard path to the site's Fusion planner and back. /ace works the same as /jerry"
+      ]
+    },
+    {
+      "version": "1.18.0",
+      "date": "2026-11-16",
+      "notes": [
+        "/jerry shards: your shards from Hypixel's API (or your Hunting Box), search any shard and its quickest recipe",
+        "Add a shard recipe to /jerry plan to track it on your HUD",
+        "Press R on a shard in any menu to open its recipe",
+        "Search bar on the Pets menu, and items in your Forge now count on the plan HUD"
+      ]
+    },
+    {
+      "version": "1.17.0",
+      "date": "2026-11-15",
+      "notes": [
+        "Garden visitor helper: see what each visitor wants and whether your sacks and storage have it",
+        "/jerry trophy fills in every Trophy Fish tier from Hypixel's API",
+        "Case-opening reveal for Crystal Nucleus bundles and dungeon chests",
+        "Glow Jerry players and an Extras page in /jerry settings"
+      ]
+    },
+    {
+      "version": "1.16.1",
+      "date": "2026-11-15",
+      "notes": [
+        "/jerry trophy now fills in every Trophy Fish tier you've caught from Hypixel's API",
+        "/jerry trophy: Trophy Fish and Trophy Frogs you're missing, and how to catch each one",
+        "Case-opening reveal for Crystal Nucleus bundles and dungeon chests",
+        "Glow Jerry players and a new Extras page in /jerry settings"
+      ]
+    },
+    {
+      "version": "1.16.0",
+      "date": "2026-11-15",
+      "notes": [
+        "/jerry trophy: Trophy Fish and Trophy Frogs you're missing, and how to catch each one",
+        "Case-opening reveal for Crystal Nucleus bundles and dungeon chests",
+        "Glow Jerry players: clanmates using the mod get a purple outline (off by default)",
+        "New Extras page in /jerry settings for all of these"
+      ]
+    },
+    {
+      "version": "1.15.1",
+      "date": "2026-11-15",
+      "notes": [
+        "Craft plan on your HUD: materials still needed from the Ironman planner (/jerry plan)",
+        "Parts you already have (like Gemstone Mixtures) take their ingredients off the list",
+        "Steps you can make now show on the HUD, e.g. Gemstone Mixture 12/40 left",
+        "Recipe tree in /jerry plan: see every step, what's done and what's ready"
+      ]
+    },
+    {
+      "version": "1.14.1",
+      "date": "2026-11-14",
+      "notes": [
+        "Put all into sacks: the new → Sacks button in the storage viewer",
+        "Update notices also show on the server list, in chat, and with /jerry update",
+        "The mod tells you when there's an update and can install it for you",
+        "Nucleus Runs tracker for Crystal Nucleus runs (/jerry nucleus)"
+      ]
+    },
+    {
+      "version": "1.14.0",
+      "date": "2026-11-14",
+      "notes": [
+        "The mod now tells you when there's an update and can install it for you",
+        "Nucleus Runs tracker for Crystal Nucleus runs (/jerry nucleus)",
+        "Favorites get their own row in the storage viewer"
+      ]
+    }
+  ]
+}
