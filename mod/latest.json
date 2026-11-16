@@ -1,11 +1,11 @@
 {
-  "version": "1.21.1",
-  "file": "ace-clan-hypixel-1.21.1.jar",
-  "sha256": "aaf4e1cb4144bc6a4882193ca4cb18c915d9772dbe60732a172621f67727e2b3",
+  "version": "1.22.0",
+  "file": "ace-clan-hypixel-1.22.0.jar",
+  "sha256": "6a76d7c91770462a936890639581257b0a07de1bdbb40922a37479ecf2e828be",
   "notes": [
-    "HUD editor: Ctrl+Z undoes your last change (move, resize, put back, Reset all) and Ctrl+Y redoes it",
-    "Drag a corner of any HUD part to resize it, like a picture in Word: the opposite corner stays put and it keeps its shape",
-    "Scrolling over a part still resizes it in 10% steps",
-    "/jerry hud shows other mods' HUD parts too (Skyblocker, SkyHanni, Odin and more) plus Minecraft's own; right-click one for that mod's settings"
+    "New Quick call menu: /ace call (or set a Quick call key in Controls) shows your Abiphone contacts as heads, like the storage viewer",
+    "Click a contact to call them (Hypixel's /call). Search by name or where they are, sort A-Z or by recent",
+    "Right-click or F stars a contact so it pins to the top; middle-click removes one",
+    "Open your Abiphone once (each page) and the mod remembers your contacts"
   ]
 }
