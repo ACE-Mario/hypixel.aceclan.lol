@@ -1,13 +1,12 @@
 {
-  "version": "1.20.0",
-  "file": "ace-clan-hypixel-1.20.0.jar",
-  "sha256": "af75c2f48d9d06c9cc383b2bab64aa66c4fe3653a34c8eee563f243bebfa76d4",
+  "version": "1.21.0",
+  "file": "ace-clan-hypixel-1.21.0.jar",
+  "sha256": "68c55c1ff8000d2a130a8f8577eb0de087e40024b1b0142cbbf2e0ef41cfc850",
   "notes": [
-    "Keep several plans: craft plans and shard plans are all saved, and the ◀ ▶ buttons in /jerry plan switch between them",
-    "Save a copy of your website plan, or delete a saved one, from /jerry plan",
-    "New HUD editor (/jerry hud, or Edit HUD in /jerry settings): drag every Ace HUD part, scroll to resize, right-click to reset",
-    "The loot reveal strip can now be moved and resized too",
-    "Fusion Machine helper: a panel beside the Fusion Machine shows your plan's next fusion and what you still need",
-    "The shards that go into that fusion get a gold outline. Turn it off under Extras"
+    "/jerry hud now shows other mods' HUD parts too (Skyblocker, SkyHanni, Odin and more), plus Minecraft's own: scoreboard, boss bar, potion effects, hotbar",
+    "Drag any of them to move it and scroll to resize. Purple boxes are Ace, blue boxes are other mods",
+    "Right-click another mod's part to open that mod's settings; shift+right-click puts any part back",
+    "A list down the side opens each HUD mod's settings, so their own HUD editors are all one click away",
+    "Reset all puts every part back, Ace's and other mods'"
   ]
 }
