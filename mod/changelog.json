@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "1.24.0",
+      "date": "2026-11-16",
+      "notes": [
+        "Loot reveal: much more to spin for, each with its own switch in /jerry settings → Reveals",
+        "Crystal Nucleus: a roll for every item in the bundle, and the loot message waits in chat until the rolls are done",
+        "Croesus: each chest you claim gets a spin, runs you finished earlier too",
+        "Kismet: rerolling a dungeon chest spins the old best item and the new one",
+        "Mineshaft corpses: a roll for every item from Lapis, Tungsten, Umber and Vanguard corpses (powder left out)",
+        "Scatha mining: worm and Scatha drops in the Crystal Hollows get a roll",
+        "Sea creature, slayer, Diana and other rare drops get a roll, and each drop can be switched off in Reveal drops…",
+        "Great and Outstanding catches, gifts, and Crystal Hollows treasure chests (off at first) can spin too",
+        "Your drops are always sent to Jerry while a tracker runs; the Trackers tab now picks which trackers show on your HUD"
+      ]
+    },
+    {
       "version": "1.23.2",
       "date": "2026-11-16",
       "notes": [

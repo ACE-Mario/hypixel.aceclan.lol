@@ -1,18 +1,16 @@
 {
-  "version": "1.23.2",
-  "file": "ace-clan-hypixel-1.23.2.jar",
-  "sha256": "6d585ff0edf37fd60c6a9533cbd032b80b08e331025380cf31f87cd7df37f769",
+  "version": "1.24.0",
+  "file": "ace-clan-hypixel-1.24.0.jar",
+  "sha256": "fb22c061eebcc95ab71b54d413db1c0a14a255e469dbaddb3ef35f33d1251275",
   "notes": [
-    "Tracker HUD: every player card (and every tracker's block) is its own HUD part, so each moves and resizes on its own in /jerry hud",
-    "Trackers you put on the HUD stay there when they stop, marked stopped, instead of vanishing",
-    "Players view: a tracker with nobody on it yet still shows a card",
-    "Cards and lists show every drop, not just the top 3",
-    "Drops menu: turn each drop on or off on the HUD, for every tracker (Drops… in /jerry gui, or /jerry hud drops)",
-    "Right-click a drop in the Drops menu to pin it to the top of the cards",
-    "Cards show how long the tracker has been running",
-    "Gemstones always count as rough: flawed, fine, flawless and perfect are worked out in rough and added in (80 rough = 1 flawed, 80 flawed = 1 fine, 80 fine = 1 flawless, 5 flawless = 1 perfect)",
-    "Hide when idle: a card with no new drops for 3 minutes hides until something new drops (change it in the Drops menu)",
-    "/jerry settings has every setting in one place, in tabs: General, Trackers, HUD, Reveals and Helpers (the Extras page is gone, its settings moved there)",
-    "Menus share one look and tidier code underneath"
+    "Loot reveal: much more to spin for, each with its own switch in /jerry settings → Reveals",
+    "Crystal Nucleus: a roll for every item in the bundle, and the loot message waits in chat until the rolls are done",
+    "Croesus: each chest you claim gets a spin, runs you finished earlier too",
+    "Kismet: rerolling a dungeon chest spins the old best item and the new one",
+    "Mineshaft corpses: a roll for every item from Lapis, Tungsten, Umber and Vanguard corpses (powder left out)",
+    "Scatha mining: worm and Scatha drops in the Crystal Hollows get a roll",
+    "Sea creature, slayer, Diana and other rare drops get a roll, and each drop can be switched off in Reveal drops…",
+    "Great and Outstanding catches, gifts, and Crystal Hollows treasure chests (off at first) can spin too",
+    "Your drops are always sent to Jerry while a tracker runs; the Trackers tab now picks which trackers show on your HUD"
   ]
 }
