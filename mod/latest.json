@@ -1,13 +1,13 @@
 {
-  "version": "1.19.1",
-  "file": "ace-clan-hypixel-1.19.1.jar",
-  "sha256": "62f784ba17d930ce85ce920c7fb15c3764c649b5a296c309ee31c9238c7aa212",
+  "version": "1.20.0",
+  "file": "ace-clan-hypixel-1.20.0.jar",
+  "sha256": "af75c2f48d9d06c9cc383b2bab64aa66c4fe3653a34c8eee563f243bebfa76d4",
   "notes": [
-    "/jerry update now checks the site again every time you type it",
-    "The automatic update check runs once, when you open the Multiplayer server list",
-    "New /jerry shards menu: real shard icons, an icon bar for each type, and how many you need for max",
-    "Hover a shard's icon for its lore. Click it for how to get it, or its fusion tree",
-    "Swap any step in a fusion tree (break down, hunt instead, or another recipe), and pick a goal level or Max",
-    "Push a shard path to the site's Fusion planner and back. /ace works the same as /jerry"
+    "Keep several plans: craft plans and shard plans are all saved, and the ◀ ▶ buttons in /jerry plan switch between them",
+    "Save a copy of your website plan, or delete a saved one, from /jerry plan",
+    "New HUD editor (/jerry hud, or Edit HUD in /jerry settings): drag every Ace HUD part, scroll to resize, right-click to reset",
+    "The loot reveal strip can now be moved and resized too",
+    "Fusion Machine helper: a panel beside the Fusion Machine shows your plan's next fusion and what you still need",
+    "The shards that go into that fusion get a gold outline. Turn it off under Extras"
   ]
 }
