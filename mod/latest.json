@@ -1,15 +1,18 @@
 {
-  "version": "1.23.1",
-  "file": "ace-clan-hypixel-1.23.1.jar",
-  "sha256": "c35caa9e4fbe8b39526ed2094fcd34c6792af045d97fd04c68643518e276df59",
+  "version": "1.23.2",
+  "file": "ace-clan-hypixel-1.23.2.jar",
+  "sha256": "6d585ff0edf37fd60c6a9533cbd032b80b08e331025380cf31f87cd7df37f769",
   "notes": [
-    "HUD layouts: Default, Dungeons, Mining, Farming and Fishing can each have their own HUD layout, picked at the top of /jerry hud",
-    "The mod switches layout by where you are (a fishing rod in your hand counts as fishing). Turn Auto-switch off in /jerry hud",
-    "Tracker counts on your HUD: in /jerry gui, pick a tracker and press Show on HUD. Move it with /jerry hud",
-    "Show your counts, everyone's added together, or each player's (the Mine / Everyone / Players button in /jerry gui)",
-    "Players view: a card per player with their skin's face, the tracker and what they've collected",
-    "Pick players: a face for everyone who linked the mod, click to add or remove their card, or type any name (/jerry hud players, /jerry hud add <name>)",
-    "What's changed: the update box lists every change since your version, and after updating a chat message links to them",
-    "/jerry changelog shows every version's changes, and the mod page has a full changelog"
+    "Tracker HUD: every player card (and every tracker's block) is its own HUD part, so each moves and resizes on its own in /jerry hud",
+    "Trackers you put on the HUD stay there when they stop, marked stopped, instead of vanishing",
+    "Players view: a tracker with nobody on it yet still shows a card",
+    "Cards and lists show every drop, not just the top 3",
+    "Drops menu: turn each drop on or off on the HUD, for every tracker (Drops… in /jerry gui, or /jerry hud drops)",
+    "Right-click a drop in the Drops menu to pin it to the top of the cards",
+    "Cards show how long the tracker has been running",
+    "Gemstones always count as rough: flawed, fine, flawless and perfect are worked out in rough and added in (80 rough = 1 flawed, 80 flawed = 1 fine, 80 fine = 1 flawless, 5 flawless = 1 perfect)",
+    "Hide when idle: a card with no new drops for 3 minutes hides until something new drops (change it in the Drops menu)",
+    "/jerry settings has every setting in one place, in tabs: General, Trackers, HUD, Reveals and Helpers (the Extras page is gone, its settings moved there)",
+    "Menus share one look and tidier code underneath"
   ]
 }

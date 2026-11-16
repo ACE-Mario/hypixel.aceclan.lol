@@ -67,13 +67,13 @@
           <span class="pill">Minecraft 26.2</span>
           <span class="pill">Fabric</span>
           <span class="pill">Client-side only</span>
-          <span class="pill">Version 1.23.1</span>
+          <span class="pill">Version 1.23.2</span>
         </div>
       </div>
       <div class="dl">
-        <a class="btn" href="ace-clan-hypixel-1.23.1.jar" download>⬇ Download the mod</a>
+        <a class="btn" href="ace-clan-hypixel-1.23.2.jar" download>⬇ Download the mod</a>
         <a class="whatsnew" href="#changelog">What's new? See the changelog ↓</a>
-        <small>ace-clan-hypixel-1.23.1.jar · 340 KB</small>
+        <small>ace-clan-hypixel-1.23.2.jar · 351 KB</small>
       </div>
     </div>
     <p class="hint">The mod reads chat and menus and draws on your screen. The only commands it ever sends are when you click an item in the storage viewer: <code>/gfs</code>, or the command that opens that ender chest page or backpack.</p>
@@ -104,7 +104,7 @@
       <div class="card"><h3>🔥 Kuudra Chests</h3><p>What you claim from Paid and Free chests.</p></div>
       <div class="card"><h3>🐛 Garden Pests</h3><p>Pests killed and the crops they drop.</p></div>
       <div class="card"><h3>🔮 Nucleus Runs</h3><p>Crystal Nucleus runs finished and what each loot bundle gave.</p></div>
-      <div class="card"><h3>📊 Counts on your HUD</h3><p>In <code>/jerry gui</code>, pick a tracker and press <b>Show on HUD</b>. While it runs, your counts show on screen: yours, everyone's together, or a card per player with their skin's face. <b>Pick players…</b> chooses whose cards show.</p></div>
+      <div class="card"><h3>📊 Counts on your HUD</h3><p>In <code>/jerry gui</code>, pick a tracker and press <b>Show on HUD</b>. While it runs, your counts show on screen: yours, everyone's together, or a card per player with their skin's face. <b>Pick players…</b> chooses whose cards show, <b>Drops…</b> turns each drop on or off or pins it to the top, gemstones count as rough, idle cards hide, and each card moves on its own in <code>/jerry hud</code>.</p></div>
     </div>
     <p class="hint">Drops are counted per player and per SkyBlock profile. Jerry keeps a live message in Discord and all-time totals.</p>
 
@@ -117,7 +117,7 @@
       <div class="card"><h3>👤 Per profile</h3><p>Each SkyBlock profile keeps its own storage, saved between games. Switch profiles from the dropdown at the top.</p></div>
       <div class="card"><h3>📥 Put all into sacks</h3><p>The <b>→ Sacks</b> button opens <code>/sacks</code> and outlines the Insert Inventory button, so one click puts everything that fits into your sacks.</p></div>
       <div class="card"><h3>🧰 Island chests</h3><p>Chests you open on your private island are remembered. Click an item and its chest lights up through walls.</p></div>
-      <div class="card"><h3>⚙️ Settings screen</h3><p>Turn chest memory and each tracker on or off with <code>/jerry settings</code>.</p></div>
+      <div class="card"><h3>⚙️ Settings screen</h3><p>Every setting in one place with <code>/jerry settings</code>, in tabs: General, Trackers, HUD, Reveals and Helpers.</p></div>
     </div>
     <p class="hint">Sacks, ender chest and backpacks come from Hypixel's API when you open the viewer (your Inventory API needs to be on). Sacks stay live from the [Sacks] chat messages, and opening a sack, ender chest page or backpack updates it straight away.</p>
 
@@ -161,7 +161,7 @@
       <div class="card"><h3>🖼️ HUD editor</h3><p><code>/jerry hud</code> puts every HUD on one screen: Ace's, other mods' (Skyblocker, SkyHanni, Odin…) and Minecraft's own scoreboard, boss bar and effects. Drag to move, drag a corner to resize like a picture in Word, and <b>Ctrl+Z</b> to undo.</p></div>
       <div class="card"><h3>🗺️ HUD layouts</h3><p>Dungeons, Mining, Farming and Fishing can each have their own HUD layout. The mod switches by where you are, and a fishing rod in your hand counts as fishing.</p></div>
       <div class="card"><h3>🧩 Other mods' settings</h3><p>Right-click another mod's HUD part to open that mod's settings, or use the list down the side. Shift+right-click puts any part back. Needs Mod Menu.</p></div>
-      <div class="card"><h3>⚙️ Extras page</h3><p>Find all of these under <b>Extras</b> in <code>/jerry settings</code>, with a button to test the reveal.</p></div>
+      <div class="card"><h3>⚙️ Extras page</h3><p>Find all of these in <code>/jerry settings</code> (Reveals and Helpers tabs), with a button to test the reveal.</p></div>
     </div>
 
     <h3 class="section-h">Commands</h3>
@@ -177,10 +177,11 @@
         <tr><td><code>/jerry call</code></td><td>In Minecraft. Quick call: your Abiphone contacts as heads. Click one to call them. You can also set a key for it in Controls.</td></tr>
         <tr><td><code>/jerry hud</code></td><td>In Minecraft. Move and resize every HUD part on one screen: Ace's, other mods' and Minecraft's own. Right-click one to open that mod's settings.</td></tr>
         <tr><td><code>/jerry hud players</code></td><td>In Minecraft. Pick whose cards show on the tracker HUD: click the face of anyone who linked the mod. <code>/jerry hud add &lt;name&gt;</code> and <code>/jerry hud remove &lt;name&gt;</code> work too.</td></tr>
+        <tr><td><code>/jerry hud drops</code></td><td>In Minecraft. Turn each tracker's drops on or off on the tracker HUD, or right-click to pin one to the top.</td></tr>
         <tr><td><code>/jerry trophy</code></td><td>In Minecraft. Trophy Fish and Trophy Frogs: which tiers you have, what's missing, and how to catch each one.</td></tr>
         <tr><td><code>/jerry update</code></td><td>In Minecraft. Check the site for a new version right now and install it. The mod also checks once when you open the Multiplayer server list.</td></tr>
         <tr><td><code>/jerry nucleus</code></td><td>In Minecraft. Your Crystal Nucleus runs: this session and the total on each profile. Each run also shows its number in chat.</td></tr>
-        <tr><td><code>/jerry settings</code></td><td>In Minecraft. Toggle features and choose which of your drops are sent.</td></tr>
+        <tr><td><code>/jerry settings</code></td><td>In Minecraft. Every setting, in tabs: General, Trackers, HUD, Reveals and Helpers.</td></tr>
         <tr><td><code>/jerry start &lt;tracker&gt;</code></td><td>In Minecraft. Start a tracker. <code>/jerry stop &lt;tracker&gt;</code> stops it.</td></tr>
         <tr><td><code>/jerry status</code></td><td>In Minecraft. Check you're connected and what's running.</td></tr>
         <tr><td><code>/ace …</code></td><td>In Minecraft. Works the same as <code>/jerry</code>, so <code>/ace shards</code> or <code>/ace plan</code> work too.</td></tr>
