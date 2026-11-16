@@ -1,11 +1,10 @@
 {
-  "version": "1.22.0",
-  "file": "ace-clan-hypixel-1.22.0.jar",
-  "sha256": "6a76d7c91770462a936890639581257b0a07de1bdbb40922a37479ecf2e828be",
+  "version": "1.22.1",
+  "file": "ace-clan-hypixel-1.22.1.jar",
+  "sha256": "1ffe8e51e55c1c1c93c01a1dfaf3fbd2dd6a6c19efe4c019a314e5b7304a21ee",
   "notes": [
-    "New Quick call menu: /ace call (or set a Quick call key in Controls) shows your Abiphone contacts as heads, like the storage viewer",
-    "Click a contact to call them (Hypixel's /call). Search by name or where they are, sort A-Z or by recent",
-    "Right-click or F stars a contact so it pins to the top; middle-click removes one",
-    "Open your Abiphone once (each page) and the mod remembers your contacts"
+    "Quick call uses the exact name /call takes for each contact (Maddox the Slayer is /call maddox, Feast Baker Scott is /call Scott, Spider Tamer is /call SpiderTamer, Crag is /call kuudra...)",
+    "Hover a contact to see the exact /call it will run",
+    "Quick call menu: /ace call (or set a Quick call key in Controls) shows your Abiphone contacts as heads. Click to call, right-click or F to star"
   ]
 }
