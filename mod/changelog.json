@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "1.24.1",
+      "date": "2026-11-16",
+      "notes": [
+        "Anything that gets a roll waits in chat until its roll lands: rare drops, sea creature, slayer, Diana and Scatha drops, catches, gifts, and Nucleus, corpse and treasure loot",
+        "The ▬▬▬ line above a rolled loot message waits too",
+        "Messages are held back only after other mods have seen them, so SkyHanni and Skyblocker trackers still count them",
+        "Corpse rolls leave out HOTM Exp as well as powder",
+        "Gemstone names no longer keep the symbol in front of them"
+      ]
+    },
+    {
       "version": "1.24.0",
       "date": "2026-11-16",
       "notes": [

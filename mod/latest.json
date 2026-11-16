@@ -1,16 +1,12 @@
 {
-  "version": "1.24.0",
-  "file": "ace-clan-hypixel-1.24.0.jar",
-  "sha256": "fb22c061eebcc95ab71b54d413db1c0a14a255e469dbaddb3ef35f33d1251275",
+  "version": "1.24.1",
+  "file": "ace-clan-hypixel-1.24.1.jar",
+  "sha256": "3dbd661763550fd34b1ef32ddd0ebc3e96f1838f73c327928a73840e3f30330c",
   "notes": [
-    "Loot reveal: much more to spin for, each with its own switch in /jerry settings → Reveals",
-    "Crystal Nucleus: a roll for every item in the bundle, and the loot message waits in chat until the rolls are done",
-    "Croesus: each chest you claim gets a spin, runs you finished earlier too",
-    "Kismet: rerolling a dungeon chest spins the old best item and the new one",
-    "Mineshaft corpses: a roll for every item from Lapis, Tungsten, Umber and Vanguard corpses (powder left out)",
-    "Scatha mining: worm and Scatha drops in the Crystal Hollows get a roll",
-    "Sea creature, slayer, Diana and other rare drops get a roll, and each drop can be switched off in Reveal drops…",
-    "Great and Outstanding catches, gifts, and Crystal Hollows treasure chests (off at first) can spin too",
-    "Your drops are always sent to Jerry while a tracker runs; the Trackers tab now picks which trackers show on your HUD"
+    "Anything that gets a roll waits in chat until its roll lands: rare drops, sea creature, slayer, Diana and Scatha drops, catches, gifts, and Nucleus, corpse and treasure loot",
+    "The ▬▬▬ line above a rolled loot message waits too",
+    "Messages are held back only after other mods have seen them, so SkyHanni and Skyblocker trackers still count them",
+    "Corpse rolls leave out HOTM Exp as well as powder",
+    "Gemstone names no longer keep the symbol in front of them"
   ]
 }
