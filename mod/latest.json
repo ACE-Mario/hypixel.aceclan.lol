@@ -1,12 +1,12 @@
 {
-  "version": "1.24.1",
-  "file": "ace-clan-hypixel-1.24.1.jar",
-  "sha256": "3dbd661763550fd34b1ef32ddd0ebc3e96f1838f73c327928a73840e3f30330c",
+  "version": "1.24.2",
+  "file": "ace-clan-hypixel-1.24.2.jar",
+  "sha256": "6aac9b43fdaddd49f37c173f3555b1399ffb6af004d1fe2cadf18f7f49b95796",
   "notes": [
-    "Anything that gets a roll waits in chat until its roll lands: rare drops, sea creature, slayer, Diana and Scatha drops, catches, gifts, and Nucleus, corpse and treasure loot",
-    "The ▬▬▬ line above a rolled loot message waits too",
-    "Messages are held back only after other mods have seen them, so SkyHanni and Skyblocker trackers still count them",
-    "Corpse rolls leave out HOTM Exp as well as powder",
-    "Gemstone names no longer keep the symbol in front of them"
+    "Fixed heavy FPS lag with tracker cards on the HUD: they're now worked out a few times a second instead of every frame",
+    "The craft plan HUD no longer rebuilds every item icon from your storage every 2 seconds, just the counts",
+    "Saving your storage and item icons happens in the background, so the game no longer freezes while those big files are written",
+    "The garden visitor helper no longer looks through all your storage every frame",
+    "Drops in chat with a repeat counter from a chat-compacting mod, like \"x64 (2)\", are counted properly"
   ]
 }

@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "1.24.2",
+      "date": "2026-11-17",
+      "notes": [
+        "Fixed heavy FPS lag with tracker cards on the HUD: they're now worked out a few times a second instead of every frame",
+        "The craft plan HUD no longer rebuilds every item icon from your storage every 2 seconds, just the counts",
+        "Saving your storage and item icons happens in the background, so the game no longer freezes while those big files are written",
+        "The garden visitor helper no longer looks through all your storage every frame",
+        "Drops in chat with a repeat counter from a chat-compacting mod, like \"x64 (2)\", are counted properly"
+      ]
+    },
+    {
       "version": "1.24.1",
       "date": "2026-11-16",
       "notes": [
