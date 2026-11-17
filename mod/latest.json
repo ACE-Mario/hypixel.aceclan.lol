@@ -1,11 +1,8 @@
 {
-  "version": "1.24.3",
-  "file": "ace-clan-hypixel-1.24.3.jar",
-  "sha256": "f79f7cc893c6b286c6079a564e523f41f720d546a8088738edcda4d383cab33f",
+  "version": "1.24.4",
+  "file": "ace-clan-hypixel-1.24.4.jar",
+  "sha256": "1d4914094f09758c482a7518aa5e3abe91ea388745e65e76acba7ce9d8234c85",
   "notes": [
-    "Fixed big FPS spikes: a ▬▬▬ chat line held for a loot roll was put back into chat over and over, and every mod re-read it each time",
-    "Powder mining chests count again: putting that line back could end a chest's loot before its rewards came in",
-    "Held chat lines now go straight back into chat, so other mods' trackers don't count those drops twice",
-    "Works with chat-compacting mods: \"REWARDS (5)\" isn't counted as an item"
+    "On the PC that runs Jerry, the mod now talks straight to the new Hypixel tracker program, so drop tracking keeps working even while Jerry is off"
   ]
 }
